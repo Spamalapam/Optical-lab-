@@ -75,6 +75,15 @@
         .scene-btn.active { color: #4facfe; border-top-color: #4facfe; background: rgba(79, 172, 254, 0.1); }
 
         #retina-canvas { width: 100%; height: 100%; background: #000; }
+        
+        /* BRAIN MODE INDICATOR */
+        #brain-indicator {
+            position: absolute; top: 10px; right: 10px; 
+            background: rgba(255, 50, 50, 0.8); color: white;
+            padding: 4px 8px; border-radius: 4px; font-size: 0.6rem;
+            text-transform: uppercase; letter-spacing: 1px;
+            display: none; pointer-events: none;
+        }
 
         /* CONTROLS */
         #controls-scroll { flex: 1; overflow-y: auto; padding: 20px; -webkit-overflow-scrolling: touch; }
@@ -106,8 +115,16 @@
             border: 1px solid #444; border-radius: 8px; font-weight: 600;
             display: flex; align-items: center; justify-content: center; gap: 10px;
             transition: all 0.2s;
+            margin-bottom: 10px;
         }
         .btn-large.active { background: #4facfe; color: #000; border-color: #4facfe; box-shadow: 0 0 15px rgba(79, 172, 254, 0.3); }
+        
+        .btn-brain {
+            background: #2a1a1a; border-color: #552222; color: #ff9999;
+        }
+        .btn-brain.active {
+            background: #ff4444; color: white; border-color: #ff0000; box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
+        }
 
         /* DESKTOP TWEAKS */
         @media (min-width: 768px) {
@@ -130,6 +147,7 @@
     
     <div id="retina-container">
         <div id="retina-label">Patient View</div>
+        <div id="brain-indicator">BRAIN FILTER ACTIVE</div>
         <div style="width: 100%; height: calc(100% - 30px); position: relative;" onclick="document.getElementById('retina-container').classList.toggle('expanded')">
             <canvas id="retina-canvas" width="300" height="300"></canvas>
         </div>
@@ -148,13 +166,23 @@
         <div class="control-section">
             <div class="control-header">Patient Rx</div>
             <div class="control-row"><label>Sphere</label><span id="val-rx-sph" class="val">-3.00 D</span></div>
-            <input type="range" id="inp-rx-sph" min="-8" max="8" step="0.25" value="-3.00" oninput="sim.updateRx()">
+            <input type="range" id="inp-rx-sph" min="-10" max="10" step="0.25" value="-3.00" oninput="sim.updateRx()">
 
             <div class="control-row" style="margin-top:15px;"><label>Cylinder</label><span id="val-rx-cyl" class="val">-0.00 D</span></div>
-            <input type="range" id="inp-rx-cyl" min="-4" max="0" step="0.25" value="0.00" oninput="sim.updateRx()">
+            <input type="range" id="inp-rx-cyl" min="-6" max="0" step="0.25" value="0.00" oninput="sim.updateRx()">
 
             <div class="control-row" style="margin-top:15px;"><label>Axis</label><span id="val-rx-axis" class="val">180°</span></div>
             <input type="range" id="inp-rx-axis" min="0" max="180" step="1" value="180" oninput="sim.updateRx()">
+        </div>
+
+        <div class="control-section">
+            <div class="control-header">Visual Processing</div>
+            <button class="btn-large btn-brain" id="btn-brain-toggle" onclick="sim.toggleBrainMode()">
+                <span id="btn-brain-icon">🧠</span> <span id="btn-brain-text">Activate Neural Compensation</span>
+            </button>
+            <p style="font-size: 0.7rem; color: #666; margin-top: 5px; line-height: 1.4;">
+                Simulates how the brain "sharpens" blurry input by hallucinating details. Sharpness increases, but accuracy decreases.
+            </p>
         </div>
 
         <div class="control-section">
@@ -165,10 +193,10 @@
 
             <div id="lens-controls" style="opacity: 0.4; pointer-events: none; margin-top: 20px; transition: opacity 0.3s;">
                 <div class="control-row"><label>Lens Sphere</label><span id="val-lens-sph" class="val">0.00 D</span></div>
-                <input type="range" id="inp-lens-sph" min="-10" max="10" step="0.25" value="0" oninput="sim.manualLens()">
+                <input type="range" id="inp-lens-sph" min="-12" max="12" step="0.25" value="0" oninput="sim.manualLens()">
                 
                 <div class="control-row" style="margin-top:10px;"><label>Lens Cyl</label><span id="val-lens-cyl" class="val">0.00 D</span></div>
-                <input type="range" id="inp-lens-cyl" min="-6" max="0" step="0.25" value="0" oninput="sim.manualLens()">
+                <input type="range" id="inp-lens-cyl" min="-8" max="0" step="0.25" value="0" oninput="sim.manualLens()">
                 
                 <div class="control-row" style="margin-top:10px;"><label>Lens Axis</label><span id="val-lens-axis" class="val">180°</span></div>
                 <input type="range" id="inp-lens-axis" min="0" max="180" step="1" value="180" oninput="sim.manualLens()">
@@ -187,11 +215,24 @@ const sim = {
         rx: { sph: -3.00, cyl: 0.00, axis: 180 },
         eye: { axialLength: 24.0 },
         lens: { active: false, sph: 0, cyl: 0, axis: 180 },
-        sceneMode: 'landscape' 
+        sceneMode: 'landscape',
+        brainMode: false
     },
 
     objects: { eyeGroup: null, eyeContainer: null, eyeMesh: null, lensMesh: null, rays: [] },
     mats: { glass: null, sclera: null, ray: null },
+    
+    // Hallucination Dictionaries
+    hallucinations: {
+        "VISION": "VERSION",
+        "TEST": "TEXT",
+        "Hold": "Hand",
+        "card": "cart",
+        "insufficient": "isegnificant",
+        "Myopes": "Myspecs",
+        "read": "road",
+        "easily": "vastly"
+    },
 
     init: function() {
         this.scene = new THREE.Scene();
@@ -220,16 +261,15 @@ const sim = {
         rim.position.set(-10, 0, -5);
         this.scene.add(rim);
 
-        // GLASS LENS - VISIBILITY BOOST
-        // Made it more "blue demo lens" style so you can see the geometry
+        // GLASS LENS
         this.mats.glass = new THREE.MeshPhysicalMaterial({
-            color: 0x88ccff,          // Stronger blue tint
+            color: 0x88ccff,          
             metalness: 0.05,
-            roughness: 0.1,           // Slight roughness to catch the light
-            transmission: 0.25,       // Lower transmission (less "air", more "glass")
+            roughness: 0.1,           
+            transmission: 0.25,      
             thickness: 2.0,
             transparent: true,
-            opacity: 0.7,             // Higher opacity
+            opacity: 0.7,             
             ior: 1.5, 
             side: THREE.DoubleSide, 
             clearcoat: 1.0,
@@ -272,18 +312,11 @@ const sim = {
         this.objects.retinaPlane = new THREE.Mesh(retGeo, retMat);
         this.objects.eyeGroup.add(this.objects.retinaPlane);
 
-        // High resolution cylinder for smooth deformation
-        // Radius 4, Height (Thickness) 0.2 (base), Segments 128
         const lensGeo = new THREE.CylinderGeometry(4, 4, 0.2, 128, 16, false);
         this.objects.lensMesh = new THREE.Mesh(lensGeo, this.mats.glass);
         this.objects.lensMesh.position.z = -8; 
-        
-        // Face the camera/eye. 
-        // Note: After rotation, local Y is depth (Global Z). Local X/Z are the face plane.
         this.objects.lensMesh.rotation.x = Math.PI/2; 
         this.objects.lensMesh.visible = false;
-        
-        // Store original positions for deformation
         this.objects.lensMesh.userData.baseGeometry = lensGeo.clone();
         
         this.scene.add(this.objects.lensMesh);
@@ -307,6 +340,35 @@ const sim = {
         document.querySelectorAll('.scene-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         this.calculateRays(); 
+    },
+
+    toggleBrainMode: function() {
+        this.state.brainMode = !this.state.brainMode;
+        const btn = document.getElementById('btn-brain-toggle');
+        const indicator = document.getElementById('brain-indicator');
+        
+        if (this.state.brainMode) {
+            btn.classList.add('active');
+            indicator.style.display = 'block';
+            document.getElementById('btn-brain-text').innerText = "Deactivate Neural Compensation";
+        } else {
+            btn.classList.remove('active');
+            indicator.style.display = 'none';
+            document.getElementById('btn-brain-text').innerText = "Activate Neural Compensation";
+        }
+        this.calculateRays();
+    },
+
+    hallucinateText: function(text) {
+        if (!this.state.brainMode) return text;
+        return text.split(' ').map(word => {
+            const cleanWord = word.replace(/[.,]/g, '');
+            const punct = word.replace(cleanWord, '');
+            if (this.hallucinations[cleanWord]) {
+                return this.hallucinations[cleanWord] + punct;
+            }
+            return word;
+        }).join(' ');
     },
 
     updateRx: function() {
@@ -388,57 +450,23 @@ const sim = {
         const s = this.state.lens.sph;
         const c = this.state.lens.cyl;
         const aRad = this.state.lens.axis * (Math.PI / 180);
-
-        // Parameters for visual thickness
-        const baseThickness = 0.15; // Minimum center thickness
-        const powerFactor = 0.025; // How much power affects thickness
+        const baseThickness = 0.15; 
+        const powerFactor = 0.025; 
         
-        // We do NOT rotate the mesh. We deform it in place based on angle.
         mesh.rotation.z = 0; 
 
         for (let i = 0; i < count; i++) {
             const x = basePos.getX(i);
             const y = basePos.getY(i);
             const z = basePos.getZ(i);
-
-            // In CylinderGeometry rotated X=90:
-            // Local Y is the thickness/axis (aligned with Global Z)
-            // Local X and Z are the face plane.
-            
-            // Calculate radius and angle on the face
             const r = Math.sqrt(x*x + z*z);
-            const theta = Math.atan2(x, z); // Orientation on face
-
-            // Calculate Power at this meridian
-            // Formula: Power = Sph + Cyl * sin^2(theta - axis)
-            // But user requested: "Astig cyl thicker in opposite axis"
-            // So we use cos^2 or shift axis by 90 for the thickness profile visual
+            const theta = Math.atan2(x, z); 
             const axisDiff = theta - aRad;
-            
-            // Power Profile for visualization
-            // If we use standard sin^2, axis 180 has 0 cyl power contribution (thinnest part of minus lens).
-            // User requested: Axis 180 should be THICKER (3 and 9 o'clock).
-            // So we invert the relationship for visual thickness: use cos^2
             const cylFactor = Math.cos(axisDiff); 
             const localPower = s + c * (cylFactor * cylFactor);
-
-            // Thickness Calculation
-            // We want thickness to change based on r^2 (sagitta approximation)
-            // If Power is Negative (Myopia): Thicker at edge (r increases).
-            // If Power is Positive (Hyperopia): Thinner at edge (r increases).
-            
-            // Sagitta offset: proportional to r^2 * -Power
-            // (Negative power -> Positive offset/thickening)
             const sag = (r * r) * (-localPower) * powerFactor;
-
-            // Apply to Y (thickness axis).
-            // Symmetric expansion: move top up, bottom down.
-            // We clamp to ensure it doesn't invert (become negative thickness)
-            
             const originalYSign = Math.sign(y);
             let halfThick = baseThickness + sag;
-            
-            // Safety clamp for high plus power (prevent center from vanishing or edges crossing)
             if (halfThick < 0.02) halfThick = 0.02;
 
             pos.setY(i, originalYSign * halfThick);
@@ -495,6 +523,9 @@ const sim = {
         const ctx = cvs.getContext('2d');
         const w = cvs.width, h = cvs.height;
 
+        ctx.filter = 'none';
+        ctx.globalAlpha = 1.0;
+        
         if (this.state.sceneMode === 'night') { ctx.fillStyle = "#050505"; } else { ctx.fillStyle = "#fff"; }
         ctx.fillRect(0,0,w,h);
 
@@ -505,167 +536,356 @@ const sim = {
         let effectiveCyl = this.state.rx.cyl;
         if (this.state.lens.active) effectiveCyl -= this.state.lens.cyl;
 
-        // --- SMOOTH BLUR LOGIC ---
+        if (this.state.sceneMode === 'landscape') {
+            this.drawLandscapeScene(ctx, w, h, hits, effectiveRxS, effectiveCyl);
+        } else if (this.state.sceneMode === 'reading') {
+            this.drawReadingScene(ctx, w, h, hits, effectiveRxS, effectiveCyl);
+        } else if (this.state.sceneMode === 'night') {
+            this.drawNightScene(ctx, w, h, hits, effectiveRxS, effectiveCyl);
+        }
+    },
+
+    getBlurAmount: function(rxSph, objectVergenceD) {
+        const accom = 4.00; 
+        const minP = -rxSph; 
+        const maxP = -rxSph + accom;
+        
         let blur = 0;
-
-        if (this.state.sceneMode === 'reading') {
-            // NEAR VISION (40cm Target)
-            if (effectiveRxS < -0.50 && effectiveRxS > -4.50) {
-                 blur = 0; // Perfect
-            } 
-            else if (effectiveRxS <= -4.50) {
-                blur = (Math.abs(effectiveRxS) - 4.50) * 10; 
-            }
-            else if (effectiveRxS >= -0.50) {
-                blur = (effectiveRxS + 2.0) * 12;
-            }
-
+        if (objectVergenceD < minP) {
+            blur = Math.abs(minP - objectVergenceD);
+        } else if (objectVergenceD > maxP) {
+            blur = Math.abs(objectVergenceD - maxP);
         } else {
-            // DISTANCE VISION
-            if (effectiveRxS > 0) {
-                if (effectiveRxS < 2.50) blur = 0; 
-                else blur = (effectiveRxS - 2.50) * 15;
+            blur = 0; 
+        }
+
+        if (this.state.brainMode) {
+            const errorMag = Math.abs(rxSph) + Math.abs(this.state.rx.cyl);
+            const compFactor = Math.max(0, 1.0 - (errorMag / 6.0));
+            blur = blur * (1.0 - (compFactor * 0.85));
+        }
+        // SCALED BACK BLUR GROWTH (User Request 2)
+        // Reduced from 12 to 10.5 to delay the onset of severe blur
+        return Math.min(blur * 10.5, 60); 
+    },
+
+    // --- LANDSCAPE SCENE ---
+    drawLandscapeScene: function(ctx, w, h, hits, sph, cyl) {
+        let jitter = 0;
+        if (Math.abs(cyl) > 0.25) jitter = Math.abs(cyl) * 20;
+
+        if (this.state.brainMode) {
+            ctx.filter = 'contrast(1.4) saturate(1.2)';
+        }
+
+        // 1. DRAW BASE LAYER (OPAQUE)
+        // Mountains moved here to fix transparency (User Request 1)
+        const blurInf = this.getBlurAmount(sph, 0);
+        const blurGround = this.getBlurAmount(sph, 0.2);
+        
+        // Base Sky
+        ctx.save();
+        ctx.filter = `blur(${blurInf}px)`;
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
+        skyGrad.addColorStop(0, "#4facfe");
+        skyGrad.addColorStop(0.5, "#fff");
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(-w, -h, w*3, h*3);
+        ctx.restore();
+
+        // Mountains (Now Opaque Base)
+        ctx.save();
+        ctx.filter = `blur(${blurInf}px)`;
+        ctx.fillStyle = "#708090"; 
+        const horizonY = h * 0.55; 
+        const centerX = w * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(-w, horizonY);
+        ctx.lineTo(centerX - 200, horizonY - 100);
+        ctx.lineTo(centerX, horizonY - 50);
+        ctx.lineTo(centerX + 200, horizonY - 150);
+        ctx.lineTo(w*2, horizonY);
+        ctx.fill();
+        ctx.restore();
+
+        // Base Ground
+        ctx.save();
+        ctx.filter = `blur(${blurGround}px)`;
+        const groundGrad = ctx.createLinearGradient(0, horizonY, 0, h);
+        groundGrad.addColorStop(0, "#556B2F"); groundGrad.addColorStop(1, "#228B22"); 
+        ctx.fillStyle = groundGrad;
+        ctx.fillRect(-w, horizonY, w*3, h*3);
+        ctx.restore();
+
+        // 2. DRAW JITTERED OBJECTS
+        if (jitter > 0) {
+            const passes = 8;
+            ctx.globalAlpha = 0.2;
+            let avgX = 0, avgY = 0;
+            hits.forEach(p => { avgX += p.x; avgY += p.y; });
+            avgX /= hits.length; avgY /= hits.length;
+            const step = Math.ceil(hits.length/passes);
+            
+            for(let i=0; i<hits.length; i+=step) {
+                const p = hits[i];
+                const dx = (p.x - avgX) * (jitter * 0.8);
+                const dy = -(p.y - avgY) * (jitter * 0.8);
+                this.renderLandscapeObjects(ctx, w, h, dx, dy, sph, cyl);
             }
-            else if (effectiveRxS < -0.25) {
-                blur = Math.abs(effectiveRxS) * 35; 
+            ctx.globalAlpha = 1.0;
+        } else {
+            this.renderLandscapeObjects(ctx, w, h, 0, 0, sph, cyl);
+        }
+        ctx.filter = 'none';
+    },
+
+    renderLandscapeObjects: function(ctx, w, h, dx, dy, sph, cyl) {
+        const horizonY = h * 0.55 + dy; 
+        const centerX = w * 0.5 + dx;
+        const blurInf = this.getBlurAmount(sph, 0);
+
+        // Sun
+        ctx.save();
+        ctx.filter = this.state.brainMode ? `contrast(1.2) blur(${blurInf}px)` : `blur(${blurInf}px)`;
+        ctx.fillStyle = "#FFD700"; 
+        const sunX = w*0.8 + dx*0.5;
+        const sunY = h*0.2 + dy*0.5;
+        ctx.beginPath(); ctx.arc(sunX, sunY, 40, 0, Math.PI*2); ctx.fill();
+        if (Math.abs(cyl) > 0.5) {
+            ctx.fillStyle = "rgba(255, 255, 200, 0.4)";
+            for(let k=0; k<12; k++) {
+                const ang = Math.random() * Math.PI * 2;
+                const dist = 40 + Math.random() * Math.abs(cyl) * 30;
+                ctx.beginPath(); ctx.arc(sunX + Math.cos(ang)*dist, sunY + Math.sin(ang)*dist, 4 + Math.random()*4, 0, Math.PI*2); ctx.fill();
+            }
+        }
+        ctx.restore();
+
+        // Grid Lines
+        ctx.save();
+        ctx.filter = `blur(${this.getBlurAmount(sph, 0.2)}px)`;
+        ctx.beginPath(); ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.lineWidth = 2;
+        for(let i=-20; i<=20; i++) {
+            const xOffset = i * 100 + dx; 
+            ctx.moveTo(w/2 + xOffset*0.1, horizonY); ctx.lineTo(w/2 + xOffset*3, h + 500); 
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // Hallucination Threshold Logic (User Request 3)
+        // Switch only happens if error is high (>= 4.0 D)
+        const totalError = Math.abs(sph) + Math.abs(cyl);
+        const allowHallucination = this.state.brainMode && (totalError >= 4.0);
+
+        // Mid Object (Log vs Bench)
+        const blurLog = this.getBlurAmount(sph, 0.25);
+        ctx.save();
+        ctx.filter = this.state.brainMode ? `contrast(1.3) blur(${blurLog}px)` : `blur(${blurLog}px)`;
+        ctx.fillStyle = "#8B4513";
+        
+        if (allowHallucination) {
+            // Bench
+            ctx.fillRect(centerX + 120, horizonY + 30, 80, 10);
+            ctx.fillRect(centerX + 120, horizonY + 40, 8, 15);
+            ctx.fillRect(centerX + 190, horizonY + 40, 8, 15);
+            ctx.fillStyle = "#5d2e0b";
+            ctx.fillRect(centerX + 120, horizonY + 15, 80, 8);
+        } else {
+            // Log
+            ctx.beginPath();
+            ctx.ellipse(centerX + 160, horizonY + 45, 40, 10, Math.PI/12, 0, Math.PI*2);
+            ctx.fill();
+        }
+        ctx.restore();
+
+        // Foreground Object (Person vs Rock)
+        const blurFar = this.getBlurAmount(sph, 0.17);
+        ctx.save();
+        ctx.filter = this.state.brainMode ? `contrast(1.3) blur(${blurFar}px)` : `blur(${blurFar}px)`;
+        
+        if (allowHallucination) {
+            // Rock
+            ctx.fillStyle = "#777";
+            ctx.beginPath();
+            ctx.ellipse(centerX - 100, horizonY + 10, 25, 15, 0, 0, Math.PI*2);
+            ctx.fill();
+        } else {
+            // Person
+            ctx.fillStyle = "#333";
+            ctx.beginPath();
+            ctx.ellipse(centerX - 100, horizonY + 5, 10, 20, 0, 0, Math.PI*2);
+            ctx.arc(centerX - 100, horizonY - 15, 8, 0, Math.PI*2);
+            ctx.fill();
+        }
+        ctx.restore();
+
+        // Foreground Tree (0.5 D)
+        const blurTree = this.getBlurAmount(sph, 0.5);
+        ctx.save();
+        ctx.filter = this.state.brainMode ? `contrast(1.3) blur(${blurTree}px)` : `blur(${blurTree}px)`;
+        ctx.fillStyle = "#8B4513"; ctx.fillRect(centerX + 80, horizonY - 20, 15, 40); 
+        ctx.fillStyle = "#2E8B57"; ctx.beginPath(); ctx.arc(centerX + 87, horizonY - 35, 25, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+
+        // Foreground Bush (Using ~3.0D effective distance logic for -3.00 myope visibility)
+        // User wants visibility at -3.00. -3.00 Myope has FP at 33cm.
+        // We set vergence to 3.0D.
+        const blurBush = this.getBlurAmount(sph, 3.0); 
+        ctx.save();
+        ctx.filter = this.state.brainMode ? `contrast(1.3) blur(${blurBush}px)` : `blur(${blurBush}px)`;
+        ctx.fillStyle = "#006400"; 
+        ctx.beginPath();
+        ctx.arc(centerX - 40, h + dy, 60, 0, Math.PI*2);
+        ctx.arc(centerX + 40, h + dy + 20, 70, 0, Math.PI*2);
+        ctx.arc(centerX, h + dy - 20, 50, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+    },
+
+    // --- READING SCENE ---
+    drawReadingScene: function(ctx, w, h, hits, sph, cyl) {
+        const sphEquiv = sph + (cyl / 2);
+        const baseBlur = this.getBlurAmount(sphEquiv, 2.50) * 0.5;
+
+        // HELPER: Draw Text
+        const drawText = (offsetX, offsetY, opacity, localBlur) => {
+            ctx.save();
+            ctx.translate(offsetX, offsetY);
+            ctx.globalAlpha = opacity;
+            
+            let filterStr = "";
+            if (localBlur > 0) filterStr += `blur(${localBlur}px) `;
+            if (this.state.brainMode) filterStr += `contrast(2.5) `; // Higher contrast for text (Request 4)
+            ctx.filter = filterStr;
+
+            ctx.fillStyle = "#000"; ctx.font = "bold 18px sans-serif";
+            ctx.textAlign = "left";
+            
+            // Hallucination Step: Replace full words (User Request 4)
+            const title = this.hallucinateText("NEAR VISION TEST");
+            ctx.fillText(title, 20, 30);
+            
+            ctx.font = "14px serif";
+            const text = "Hold this card at 40cm. If text is blurry, accommodation is insufficient. Myopes read easily.";
+            const words = text.split(' ');
+            let x=20, y=60;
+            words.forEach(wd => {
+                const finalWd = this.hallucinateText(wd);
+                ctx.fillText(finalWd, x, y);
+                x += ctx.measureText(finalWd).width + 5;
+                if(x > w-20) { x=20 + offsetX; y+=24; }
+            });
+            ctx.font = "10px sans-serif";
+            ctx.fillText("J1  J2  J3  J4", 20, y+30);
+            ctx.restore();
+        };
+
+        // Draw background
+        ctx.filter = 'none';
+        ctx.fillStyle = "#fdfbf7"; ctx.fillRect(0,0,w,h); 
+
+        // Main Text
+        drawText(0, 0, 1.0, baseBlur);
+
+        // Astigmatism Shadow
+        if (Math.abs(cyl) > 0.25) {
+            const axisRad = this.state.rx.axis * (Math.PI/180);
+            const displacement = Math.abs(cyl) * 2.0; 
+            const dx = Math.cos(axisRad) * displacement;
+            const dy = Math.sin(axisRad) * displacement;
+
+            const steps = 5;
+            for (let i = 1; i <= steps; i++) {
+                 const percent = i / steps;
+                 const op = 0.3 * (1 - percent); 
+                 const ox = dx * i;
+                 const oy = dy * i;
+                 const shadowBlur = baseBlur + (i * 1);
+                 drawText(ox, oy, op, shadowBlur);
             }
         }
         
-        if (Math.abs(effectiveCyl) > 0.25) {
-            blur += Math.abs(effectiveCyl) * 25;
-        }
+        ctx.globalAlpha = 1.0;
+        ctx.filter = 'none';
+    },
 
-        if (this.state.lens.active) {
-            const dSph = Math.abs(this.state.lens.sph - this.state.rx.sph);
-            const dCyl = Math.abs(this.state.lens.cyl - this.state.rx.cyl);
-            const dAxis = Math.abs(this.state.lens.axis - this.state.rx.axis);
-            if (dSph < 0.25 && dCyl < 0.25 && (dAxis < 10 || Math.abs(this.state.rx.cyl) < 0.25)) {
-                blur = 0;
-            }
-        }
+    // --- NIGHT SCENE (ROAD) ---
+    drawNightScene: function(ctx, w, h, hits, sph, cyl) {
+        ctx.fillStyle = "#050505"; ctx.fillRect(0,0,w,h);
         
-        if (blur < 3.0) blur = 0;
+        const horizonY = h * 0.45;
+        const blurInf = this.getBlurAmount(sph, 0);
 
-        // --- RENDER ---
-        if (blur === 0) {
-            this.drawSceneContent(ctx, w, h);
-            return;
-        }
+        // 1. Draw Road (Base)
+        ctx.save();
+        ctx.filter = `blur(${this.getBlurAmount(sph, 0.1)}px)`;
+        ctx.fillStyle = "#1a1a1a";
+        ctx.beginPath();
+        ctx.moveTo(w*0.4, horizonY);
+        ctx.lineTo(w*0.6, horizonY);
+        ctx.lineTo(w, h);
+        ctx.lineTo(0, h);
+        ctx.fill();
+        
+        // Lane Lines
+        ctx.strokeStyle = "#e0c000"; ctx.lineWidth = 2;
+        ctx.setLineDash([20, 30]);
+        ctx.beginPath();
+        ctx.moveTo(w*0.5, horizonY);
+        ctx.lineTo(w*0.5, h);
+        ctx.stroke();
+        ctx.restore();
 
-        if (this.state.sceneMode === 'night') {
-            if (Math.abs(effectiveCyl) > 0.25) {
-                 this.drawNightStreak(ctx, w, h, effectiveCyl, blur);
-            } else {
-                 this.drawNightBlur(ctx, w, h, blur);
-            }
-            return;
-        }
-
-        const passes = 12;
-        const alpha = 0.15;
-        ctx.globalAlpha = alpha;
-        const sampleStep = Math.ceil(hits.length / passes);
-        const spreadMult = (this.state.sceneMode === 'reading' && Math.abs(this.state.rx.cyl) > 0.5) ? 65 : 45;
-
-        for(let i=0; i<hits.length; i+=sampleStep) {
-            const p = hits[i];
-            const dx = p.x * (spreadMult * (blur / 50.0)); 
-            const dy = -p.y * (spreadMult * (blur / 50.0));
+        // 2. Lights Helper
+        const drawLight = (x, y, color, radius, intensity, vergence) => {
+            const lightBlur = this.getBlurAmount(sph, vergence);
+            const size = radius + lightBlur * 0.5;
             
             ctx.save();
-            ctx.translate(dx, dy);
-            this.drawSceneContent(ctx, w, h);
+            ctx.globalCompositeOperation = 'screen';
+            
+            // Bloom
+            let filterStr = `blur(${Math.max(2, lightBlur)}px)`;
+            if (this.state.brainMode) filterStr += ` brightness(1.3)`;
+            ctx.filter = filterStr;
+            ctx.fillStyle = color;
+            ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI*2); ctx.fill();
+            
+            // Starburst (Astig)
+            if (Math.abs(cyl) > 0.25) {
+                ctx.filter = 'none'; // Clear blur for crisp streaks inside the bloom? No, streaks blur too.
+                // Actually streaks should be relatively sharp but faded
+                ctx.translate(x, y);
+                let axisRad = (this.state.rx.axis) * (Math.PI/180);
+                ctx.rotate(axisRad);
+                
+                const length = Math.abs(cyl) * 40 + size*2;
+                const thickness = Math.max(1, 4 - Math.abs(cyl)*0.5);
+                const streakGrad = ctx.createLinearGradient(-length, 0, length, 0);
+                streakGrad.addColorStop(0, "rgba(0,0,0,0)");
+                streakGrad.addColorStop(0.5, color);
+                streakGrad.addColorStop(1, "rgba(0,0,0,0)");
+                
+                ctx.fillStyle = streakGrad;
+                ctx.fillRect(-length, -thickness/2, length*2, thickness);
+            }
             ctx.restore();
-        }
-        ctx.globalAlpha = 1.0;
-    },
+        };
 
-    drawNightStreak: function(ctx, w, h, cyl, blur) {
-        const cx = w/2, cy = h/2;
-        ctx.globalCompositeOperation = 'screen';
+        // 3. Draw Lights
+        // Street Lamp (Overhead, distant)
+        drawLight(w*0.75, h*0.3, "#aff", 8, 1.0, 0);
 
-        if (blur > 0) {
-            const r = Math.min(100, blur * 1.5);
-            const grad = ctx.createRadialGradient(cx, cy, 5, cx, cy, r);
-            grad.addColorStop(0, "rgba(255,255,255,0.4)");
-            grad.addColorStop(1, "rgba(0,0,0,0)");
-            ctx.fillStyle = grad;
-            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
-        }
+        // Oncoming Car (Headlights, distant)
+        drawLight(w*0.42, horizonY + 20, "#fffaaa", 5, 0.8, 0.05);
+        drawLight(w*0.46, horizonY + 20, "#fffaaa", 5, 0.8, 0.05);
 
-        const length = Math.abs(cyl) * 80 + 20;
-        const thickness = Math.max(2, 10 - Math.abs(cyl)); 
+        // Car in front (Taillights, mid-distance)
+        drawLight(w*0.55, h*0.7, "#ff0000", 6, 0.6, 0.2);
+        drawLight(w*0.65, h*0.7, "#ff0000", 6, 0.6, 0.2);
         
-        ctx.save();
-        ctx.translate(cx, cy);
-        let axisRad = (this.state.rx.axis) * (Math.PI/180);
-        ctx.rotate(axisRad);
-
-        const lingrad = ctx.createLinearGradient(-length, 0, length, 0);
-        lingrad.addColorStop(0, "rgba(200, 220, 255, 0)");
-        lingrad.addColorStop(0.5, "rgba(220, 240, 255, 0.8)");
-        lingrad.addColorStop(1, "rgba(200, 220, 255, 0)");
-        
-        ctx.fillStyle = lingrad;
-        ctx.fillRect(-length, -thickness/2, length*2, thickness);
-        
-        ctx.fillStyle = "rgba(255,255,255,0.1)";
-        ctx.fillRect(-thickness/2, -length*0.3, thickness, length*0.6);
-
-        ctx.restore();
-        
-        ctx.fillStyle = "#fff";
-        ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI*2); ctx.fill();
         ctx.globalCompositeOperation = 'source-over';
-    },
-
-    drawNightBlur: function(ctx, w, h, blur) {
-        const cx = w/2, cy = h/2;
-        ctx.globalCompositeOperation = 'screen';
-        const r = Math.min(120, blur * 2 + 10); // Softer scaling
-        const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, r);
-        grad.addColorStop(0, "rgba(255,255,255,0.8)");
-        grad.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = grad;
-        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
-        ctx.globalCompositeOperation = 'source-over';
-    },
-
-    drawSceneContent: function(ctx, w, h) {
-        if (this.state.sceneMode === 'landscape') this.drawLandscape(ctx, w, h);
-        else if (this.state.sceneMode === 'reading') this.drawBookPage(ctx, w, h);
-        else if (this.state.sceneMode === 'night') {
-            const cx = w/2, cy = h/2;
-            ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI*2); ctx.fill();
-        }
-    },
-
-    drawLandscape: function(ctx, w, h) {
-        ctx.fillStyle = "#87CEEB"; ctx.fillRect(-w,-h,w*3,h*3);
-        ctx.fillStyle = "#FFD700"; ctx.beginPath(); ctx.arc(w*0.8, h*0.2, 30, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = "#556B2F"; 
-        ctx.beginPath(); ctx.moveTo(0, h*0.6); ctx.lineTo(w*0.3, h*0.3); ctx.lineTo(w*0.6, h*0.6); 
-        ctx.lineTo(w*0.8, h*0.4); ctx.lineTo(w, h*0.6); ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.fill();
-        ctx.fillStyle = "#8B4513"; ctx.fillRect(w*0.2, h*0.7, 10, 40);
-        ctx.fillStyle = "#228B22"; ctx.beginPath(); ctx.arc(w*0.2+5, h*0.7, 20, 0, Math.PI*2); ctx.fill();
-    },
-
-    drawBookPage: function(ctx, w, h) {
-        ctx.fillStyle = "#fdfbf7"; ctx.fillRect(-w, -h, w*3, h*3); 
-        ctx.fillStyle = "#000"; ctx.font = "bold 18px sans-serif";
-        ctx.textAlign = "left";
-        ctx.fillText("NEAR VISION TEST", 20, 30);
-        ctx.font = "14px serif";
-        const text = "Hold this card at 40cm. If text is blurry, accommodation is insufficient. Myopes read easily.";
-        const words = text.split(' ');
-        let x=20, y=60;
-        words.forEach(wd => {
-            ctx.fillText(wd, x, y);
-            x += ctx.measureText(wd).width + 5;
-            if(x > w-20) { x=20; y+=24; }
-        });
-        ctx.font = "10px sans-serif";
-        ctx.fillText("J1  J2  J3  J4", 20, y+30);
+        ctx.filter = 'none';
     },
 
     animate: function() {
