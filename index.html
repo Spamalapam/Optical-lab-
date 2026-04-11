@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="description" content="Interactive refractive optics simulation — explore myopia, hyperopia, astigmatism, corrective lenses, and neural compensation in real time.">
     <title>Optical Lab — Refractive Simulation</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -10,22 +11,27 @@
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap');
 
         :root {
-            --bg-primary: #0a0c10;
-            --bg-secondary: #10131a;
-            --bg-tertiary: #161a24;
-            --bg-card: #1a1e2a;
+            --bg-primary: #08090d;
+            --bg-secondary: #0d0f15;
+            --bg-tertiary: #13161f;
+            --bg-card: #181c28;
+            --bg-card-hover: #1e2233;
             --border: rgba(255,255,255,0.06);
             --border-hover: rgba(255,255,255,0.12);
             --text-primary: #e8eaf0;
             --text-secondary: #8a8fa8;
-            --text-muted: #555a6e;
+            --text-muted: #4a4f63;
             --accent: #3b82f6;
-            --accent-glow: rgba(59,130,246,0.15);
+            --accent-bright: #60a5fa;
+            --accent-glow: rgba(59,130,246,0.18);
             --accent-soft: rgba(59,130,246,0.08);
             --success: #22c55e;
+            --success-glow: rgba(34,197,94,0.15);
             --warning: #f59e0b;
             --danger: #ef4444;
             --danger-soft: rgba(239,68,68,0.1);
+            --purple: #a855f7;
+            --purple-soft: rgba(168,85,247,0.1);
             --radius: 10px;
             --radius-lg: 14px;
         }
@@ -44,8 +50,7 @@
         #canvas-wrapper {
             position: relative; width: 100%; flex: 1;
             background: var(--bg-primary);
-            touch-action: none; overflow: hidden;
-            min-height: 0;
+            touch-action: none; overflow: hidden; min-height: 0;
         }
         #canvas-wrapper canvas { display: block; }
 
@@ -53,25 +58,24 @@
         header {
             position: absolute; top: 0; left: 0; width: 100%; z-index: 5;
             padding: 16px 20px; pointer-events: none;
-            background: linear-gradient(to bottom, rgba(10,12,16,0.95) 0%, rgba(10,12,16,0.6) 60%, transparent 100%);
+            background: linear-gradient(to bottom, rgba(8,9,13,0.95) 0%, rgba(8,9,13,0.5) 70%, transparent 100%);
             display: flex; justify-content: space-between; align-items: flex-start;
         }
         .logo-group { display: flex; align-items: center; gap: 10px; }
         .logo-mark {
-            width: 32px; height: 32px; border-radius: 8px;
-            background: linear-gradient(135deg, var(--accent), #60a5fa);
+            width: 34px; height: 34px; border-radius: 9px;
+            background: linear-gradient(135deg, #3b82f6, #818cf8, #60a5fa);
             display: flex; align-items: center; justify-content: center;
-            font-size: 14px; font-weight: 600; color: #fff;
-            box-shadow: 0 2px 12px rgba(59,130,246,0.3);
+            font-size: 13px; font-weight: 600; color: #fff;
+            box-shadow: 0 2px 16px rgba(59,130,246,0.35);
+            animation: logoShimmer 6s ease-in-out infinite;
         }
-        h1 {
-            font-size: 1rem; font-weight: 500; letter-spacing: 0.5px;
-            color: #fff; line-height: 1.2;
+        @keyframes logoShimmer {
+            0%, 100% { box-shadow: 0 2px 16px rgba(59,130,246,0.35); }
+            50% { box-shadow: 0 2px 24px rgba(96,165,250,0.5); }
         }
-        .subtitle {
-            font-size: 0.65rem; color: var(--text-secondary);
-            text-transform: uppercase; letter-spacing: 1.5px; font-weight: 400;
-        }
+        h1 { font-size: 1rem; font-weight: 500; letter-spacing: 0.5px; color: #fff; line-height: 1.2; }
+        .subtitle { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; font-weight: 400; }
 
         /* ── READOUT PILLS ── */
         .readout-bar {
@@ -79,82 +83,98 @@
             display: flex; gap: 6px; pointer-events: none;
         }
         .readout-pill {
-            background: rgba(255,255,255,0.05); backdrop-filter: blur(12px);
+            background: rgba(255,255,255,0.04); backdrop-filter: blur(16px);
             border: 1px solid var(--border); border-radius: 20px;
-            padding: 5px 12px; font-size: 0.68rem; color: var(--text-secondary);
+            padding: 5px 12px; font-size: 0.66rem; color: var(--text-secondary);
             font-family: 'JetBrains Mono', monospace; white-space: nowrap;
+            transition: all 0.4s ease;
         }
-        .readout-pill .val { color: var(--accent); font-weight: 500; }
+        .readout-pill .val { color: var(--accent); font-weight: 500; transition: color 0.3s; }
         .readout-pill.corrected .val { color: var(--success); }
 
         /* ── PATIENT VIEW ── */
         #retina-container {
             position: absolute; bottom: 16px; left: 16px;
             width: 180px; height: 180px;
-            background: #000; border: 1px solid rgba(255,255,255,0.1);
+            background: #000; border: 1px solid rgba(255,255,255,0.08);
             border-radius: var(--radius-lg); overflow: hidden;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
+            box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03);
             z-index: 6; cursor: pointer;
-            transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
         }
-        #retina-container:hover { border-color: rgba(255,255,255,0.2); }
+        #retina-container:hover { border-color: rgba(255,255,255,0.18); box-shadow: 0 12px 48px rgba(0,0,0,0.7); }
         #retina-container.expanded {
-            width: min(90vw, 400px); height: min(90vw, 400px);
+            width: min(92vw, 420px); height: min(92vw, 420px);
             bottom: 50%; left: 50%; transform: translate(-50%, 50%);
             border-color: var(--accent);
-            box-shadow: 0 0 80px rgba(0,0,0,0.8), 0 0 0 1px var(--accent);
+            box-shadow: 0 0 100px rgba(0,0,0,0.9), 0 0 0 1px var(--accent), 0 0 60px var(--accent-glow);
             z-index: 20;
         }
         #retina-label {
             position: absolute; top: 0; left: 0; width: 100%;
-            background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
-            color: var(--text-secondary); font-size: 0.6rem; padding: 6px 0;
-            text-align: center; text-transform: uppercase; letter-spacing: 1.5px;
+            background: rgba(0,0,0,0.65); backdrop-filter: blur(10px);
+            color: var(--text-secondary); font-size: 0.58rem; padding: 6px 0;
+            text-align: center; text-transform: uppercase; letter-spacing: 2px;
             border-bottom: 1px solid rgba(255,255,255,0.05); z-index: 2;
         }
         #brain-indicator {
             position: absolute; top: 6px; right: 8px; z-index: 3;
-            background: rgba(239,68,68,0.85); color: white;
-            padding: 2px 7px; border-radius: 4px; font-size: 0.55rem;
+            background: rgba(168,85,247,0.9); color: white;
+            padding: 2px 7px; border-radius: 4px; font-size: 0.5rem;
+            text-transform: uppercase; letter-spacing: 0.8px; font-weight: 500;
+            display: none; pointer-events: none;
+            animation: neuralPulse 2s ease-in-out infinite;
+        }
+        @keyframes neuralPulse {
+            0%, 100% { opacity: 0.85; } 50% { opacity: 1; }
+        }
+        #squint-indicator {
+            position: absolute; top: 6px; left: 8px; z-index: 3;
+            background: rgba(245,158,11,0.9); color: white;
+            padding: 2px 7px; border-radius: 4px; font-size: 0.5rem;
             text-transform: uppercase; letter-spacing: 0.8px; font-weight: 500;
             display: none; pointer-events: none;
         }
         #retina-canvas { width: 100%; height: 100%; background: #000; display: block; }
+        #squint-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 1; opacity: 0; transition: opacity 0.4s;
+        }
 
         #scene-toggles {
             position: absolute; bottom: 0; left: 0; width: 100%;
-            display: flex; background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(8px); z-index: 2;
+            display: flex; background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(10px); z-index: 2;
             border-top: 1px solid rgba(255,255,255,0.05);
         }
         .scene-btn {
             flex: 1; border: none; background: transparent; color: var(--text-muted);
-            padding: 8px 0; font-size: 0.65rem; cursor: pointer; font-family: inherit;
-            text-transform: uppercase; letter-spacing: 1px; font-weight: 500;
-            border-bottom: 2px solid transparent; transition: all 0.2s;
+            padding: 8px 0; font-size: 0.62rem; cursor: pointer; font-family: inherit;
+            text-transform: uppercase; letter-spacing: 1.2px; font-weight: 500;
+            border-bottom: 2px solid transparent; transition: all 0.25s;
         }
         .scene-btn:hover { color: var(--text-secondary); }
         .scene-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--accent-soft); }
 
         /* ── CONTROLS PANEL ── */
         #controls-wrapper {
-            width: 100%; height: 52vh; background: var(--bg-secondary);
+            width: 100%; height: 54vh; background: var(--bg-secondary);
             border-top: 1px solid var(--border); display: flex; flex-direction: column; z-index: 10;
         }
         #controls-scroll {
-            flex: 1; overflow-y: auto; padding: 20px;
+            flex: 1; overflow-y: auto; padding: 16px 20px 30px;
             -webkit-overflow-scrolling: touch;
-            scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent;
+            scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.06) transparent;
         }
         #controls-scroll::-webkit-scrollbar { width: 4px; }
         #controls-scroll::-webkit-scrollbar-track { background: transparent; }
-        #controls-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+        #controls-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
 
         /* ── SECTION ── */
-        .control-section { margin-bottom: 24px; }
+        .control-section { margin-bottom: 22px; }
         .control-header {
-            font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;
-            letter-spacing: 1.5px; margin-bottom: 14px; font-weight: 500;
+            font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase;
+            letter-spacing: 1.8px; margin-bottom: 12px; font-weight: 500;
             display: flex; align-items: center; gap: 8px;
         }
         .control-header::after {
@@ -165,88 +185,144 @@
         /* ── SLIDER ROW ── */
         .control-row {
             display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
-        .control-row label { color: var(--text-secondary); font-size: 0.82rem; font-weight: 400; }
+        .control-row label { color: var(--text-secondary); font-size: 0.8rem; font-weight: 400; }
         .val {
             color: var(--accent); font-weight: 500;
-            font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+            transition: color 0.3s;
         }
 
         /* ── RANGE ── */
         input[type=range] {
             width: 100%; -webkit-appearance: none; background: transparent;
-            height: 32px; margin-bottom: 6px;
+            height: 28px; margin-bottom: 4px;
         }
         input[type=range]::-webkit-slider-runnable-track {
             width: 100%; height: 3px;
-            background: linear-gradient(to right, rgba(59,130,246,0.2), rgba(59,130,246,0.4));
+            background: linear-gradient(to right, rgba(59,130,246,0.15), rgba(59,130,246,0.35));
             border-radius: 2px;
         }
         input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%;
-            background: #fff; margin-top: -7.5px;
+            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
+            background: #fff; margin-top: -6.5px;
             box-shadow: 0 1px 6px rgba(0,0,0,0.4), 0 0 0 2px var(--bg-secondary);
             transition: box-shadow 0.15s, transform 0.15s;
         }
         input[type=range]:active::-webkit-slider-thumb {
-            box-shadow: 0 0 0 3px var(--accent-glow), 0 1px 6px rgba(0,0,0,0.4), 0 0 0 2px var(--accent);
+            box-shadow: 0 0 0 4px var(--accent-glow), 0 1px 6px rgba(0,0,0,0.4), 0 0 0 2px var(--accent);
             transform: scale(1.15);
         }
         input[type=range]::-moz-range-track {
             width: 100%; height: 3px;
-            background: linear-gradient(to right, rgba(59,130,246,0.2), rgba(59,130,246,0.4));
+            background: linear-gradient(to right, rgba(59,130,246,0.15), rgba(59,130,246,0.35));
             border-radius: 2px; border: none;
         }
         input[type=range]::-moz-range-thumb {
-            height: 18px; width: 18px; border-radius: 50%;
+            height: 16px; width: 16px; border-radius: 50%;
             background: #fff; border: 2px solid var(--bg-secondary);
             box-shadow: 0 1px 6px rgba(0,0,0,0.4);
         }
 
         /* ── BUTTONS ── */
         .btn {
-            width: 100%; padding: 12px 16px;
+            width: 100%; padding: 11px 16px;
             background: var(--bg-card); color: var(--text-secondary);
             border: 1px solid var(--border); border-radius: var(--radius);
-            font-family: inherit; font-size: 0.85rem; font-weight: 500;
+            font-family: inherit; font-size: 0.82rem; font-weight: 500;
             display: flex; align-items: center; justify-content: center; gap: 8px;
-            cursor: pointer; transition: all 0.2s; margin-bottom: 8px;
+            cursor: pointer; transition: all 0.25s; margin-bottom: 6px;
         }
-        .btn:hover { border-color: var(--border-hover); background: var(--bg-tertiary); }
+        .btn:hover { border-color: var(--border-hover); background: var(--bg-card-hover); }
         .btn.active {
             background: var(--accent); color: #fff; border-color: var(--accent);
-            box-shadow: 0 0 20px var(--accent-glow);
+            box-shadow: 0 0 24px var(--accent-glow);
         }
-        .btn-brain { border-color: rgba(239,68,68,0.15); }
-        .btn-brain:hover { border-color: rgba(239,68,68,0.3); background: var(--danger-soft); }
+        .btn-brain { border-color: rgba(168,85,247,0.15); }
+        .btn-brain:hover { border-color: rgba(168,85,247,0.3); background: var(--purple-soft); }
         .btn-brain.active {
-            background: var(--danger); color: #fff; border-color: var(--danger);
-            box-shadow: 0 0 20px rgba(239,68,68,0.25);
+            background: var(--purple); color: #fff; border-color: var(--purple);
+            box-shadow: 0 0 24px rgba(168,85,247,0.3);
+        }
+        .btn-squint { border-color: rgba(245,158,11,0.15); }
+        .btn-squint:hover { border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.06); }
+        .btn-squint.active {
+            background: var(--warning); color: #fff; border-color: var(--warning);
+            box-shadow: 0 0 24px rgba(245,158,11,0.25);
         }
         .hint {
-            font-size: 0.7rem; color: var(--text-muted); line-height: 1.5;
-            margin-top: 4px; padding: 0 2px;
+            font-size: 0.68rem; color: var(--text-muted); line-height: 1.55;
+            margin-top: 3px; padding: 0 2px;
         }
 
         /* ── VA BADGE ── */
         .va-display {
             display: flex; align-items: center; gap: 12px;
             background: var(--bg-card); border: 1px solid var(--border);
-            border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px;
+            border-radius: var(--radius); padding: 12px 16px; margin-bottom: 14px;
+            transition: border-color 0.3s;
         }
         .va-ring {
             width: 44px; height: 44px; border-radius: 50%;
             border: 3px solid var(--accent); display: flex; align-items: center;
             justify-content: center; font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem; font-weight: 500; color: var(--accent); flex-shrink: 0;
+            font-size: 0.72rem; font-weight: 500; color: var(--accent); flex-shrink: 0;
+            transition: all 0.3s;
         }
         .va-ring.poor { border-color: var(--danger); color: var(--danger); }
         .va-ring.fair { border-color: var(--warning); color: var(--warning); }
         .va-ring.good { border-color: var(--success); color: var(--success); }
         .va-info { flex: 1; }
-        .va-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
-        .va-desc { font-size: 0.78rem; color: var(--text-secondary); margin-top: 2px; }
+        .va-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
+        .va-desc { font-size: 0.76rem; color: var(--text-secondary); margin-top: 2px; }
+
+        /* ── NEURAL CLARITY BAR ── */
+        .clarity-bar {
+            margin-top: 8px; margin-bottom: 4px;
+        }
+        .clarity-track {
+            width: 100%; height: 4px; background: var(--bg-card);
+            border-radius: 2px; overflow: hidden; border: 1px solid var(--border);
+        }
+        .clarity-fill {
+            height: 100%; background: linear-gradient(to right, var(--danger), var(--warning), var(--success));
+            border-radius: 2px; transition: width 0.5s ease;
+        }
+        .clarity-label {
+            display: flex; justify-content: space-between; margin-top: 4px;
+            font-size: 0.62rem; color: var(--text-muted);
+        }
+        .clarity-label .clarity-pct { color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+
+        /* ── PRESET SELECT ── */
+        .preset-select {
+            width: 100%; padding: 10px 14px; margin-bottom: 14px;
+            background: var(--bg-card); color: var(--text-secondary);
+            border: 1px solid var(--border); border-radius: var(--radius);
+            font-family: inherit; font-size: 0.82rem; font-weight: 400;
+            cursor: pointer; appearance: none; -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234a4f63' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center;
+            transition: border-color 0.2s;
+        }
+        .preset-select:hover { border-color: var(--border-hover); }
+        .preset-select:focus { outline: none; border-color: var(--accent); }
+        .preset-select option { background: var(--bg-card); color: var(--text-primary); }
+
+        /* ── FOCAL INFO ── */
+        .focal-info {
+            display: flex; gap: 8px; margin-bottom: 14px;
+        }
+        .focal-chip {
+            flex: 1; padding: 8px 10px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 8px; text-align: center;
+        }
+        .focal-chip .fc-label { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
+        .focal-chip .fc-val { font-size: 0.78rem; color: var(--accent); font-family: 'JetBrains Mono', monospace; font-weight: 500; margin-top: 2px; }
+        .focal-chip.miss .fc-val { color: var(--danger); }
+        .focal-chip.hit .fc-val { color: var(--success); }
 
         /* ── DESKTOP ── */
         @media (min-width: 768px) {
@@ -257,9 +333,7 @@
                 border-left: 1px solid var(--border); border-top: none;
             }
             #retina-container { width: 220px; height: 220px; bottom: 24px; left: 24px; }
-            #retina-container.expanded {
-                width: 420px; height: 420px;
-            }
+            #retina-container.expanded { width: 440px; height: 440px; }
         }
     </style>
 </head>
@@ -271,7 +345,7 @@
             <div class="logo-mark">OL</div>
             <div>
                 <h1>Optical Lab</h1>
-                <div class="subtitle">Refractive Physics Simulation</div>
+                <div class="subtitle">Refractive Physics Engine</div>
             </div>
         </div>
     </header>
@@ -279,16 +353,19 @@
     <div class="readout-bar">
         <div class="readout-pill" id="pill-sph-eq">SE <span class="val" id="val-se">-3.00</span></div>
         <div class="readout-pill" id="pill-va">VA <span class="val" id="val-va">20/200</span></div>
+        <div class="readout-pill" id="pill-pupil">⊙ <span class="val" id="val-pupil-pill">5.0mm</span></div>
     </div>
 
     <div id="retina-container">
         <div id="retina-label">Patient View</div>
         <div id="brain-indicator">Neural Active</div>
+        <div id="squint-indicator">Squinting</div>
+        <canvas id="squint-overlay" width="400" height="400"></canvas>
         <div style="width:100%;height:calc(100% - 28px);position:relative;" onclick="document.getElementById('retina-container').classList.toggle('expanded')">
             <canvas id="retina-canvas" width="400" height="400"></canvas>
         </div>
         <div id="scene-toggles">
-            <button class="scene-btn active" onclick="sim.setScene('landscape',this)">Landscape</button>
+            <button class="scene-btn active" onclick="sim.setScene('landscape',this)">Distance</button>
             <button class="scene-btn" onclick="sim.setScene('reading',this)">Reading</button>
             <button class="scene-btn" onclick="sim.setScene('night',this)">Night</button>
         </div>
@@ -307,6 +384,30 @@
             </div>
         </div>
 
+        <!-- Focal Info -->
+        <div class="focal-info">
+            <div class="focal-chip miss" id="fc-focal"><div class="fc-label">Focal Point</div><div class="fc-val" id="fc-focal-val">22.3mm</div></div>
+            <div class="focal-chip" id="fc-retina"><div class="fc-label">Retina</div><div class="fc-val" id="fc-retina-val">23.4mm</div></div>
+            <div class="focal-chip miss" id="fc-gap"><div class="fc-label">Gap</div><div class="fc-val" id="fc-gap-val">−1.1mm</div></div>
+        </div>
+
+        <!-- Presets -->
+        <div class="control-section">
+            <div class="control-header">Quick Presets</div>
+            <select class="preset-select" id="preset-select" onchange="sim.loadPreset(this.value)">
+                <option value="">— Select a condition —</option>
+                <option value="emmetropic">Emmetropic (Perfect Vision)</option>
+                <option value="mild-myopia" selected>Mild Myopia (−1.50)</option>
+                <option value="mod-myopia">Moderate Myopia (−3.00)</option>
+                <option value="high-myopia">High Myopia (−6.00)</option>
+                <option value="low-hyp">Low Hyperopia (+1.50)</option>
+                <option value="mod-hyp">Moderate Hyperopia (+3.00)</option>
+                <option value="astig-only">Astigmatism Only (−1.50 × 90)</option>
+                <option value="myopia-astig">Myopia + Astigmatism (−2.00 / −1.50 × 180)</option>
+                <option value="high-astig">High Astigmatism (−3.50 × 45)</option>
+            </select>
+        </div>
+
         <!-- Rx -->
         <div class="control-section">
             <div class="control-header">Patient Rx</div>
@@ -318,6 +419,16 @@
             <input type="range" id="inp-rx-axis" min="1" max="180" step="1" value="180" oninput="sim.updateRx()">
         </div>
 
+        <!-- Eye Properties -->
+        <div class="control-section">
+            <div class="control-header">Eye Properties</div>
+            <div class="control-row"><label>Pupil Diameter</label><span id="val-pupil" class="val">5.0 mm</span></div>
+            <input type="range" id="inp-pupil" min="2" max="8" step="0.5" value="5" oninput="sim.updatePupil()">
+            <div class="control-row"><label>Age (Accommodation)</label><span id="val-age" class="val">25 yrs</span></div>
+            <input type="range" id="inp-age" min="10" max="70" step="1" value="25" oninput="sim.updateAge()">
+            <div class="hint">Accommodation amplitude decreases with age. Young eyes can focus nearby; presbyopic eyes cannot.</div>
+        </div>
+
         <!-- Neural -->
         <div class="control-section">
             <div class="control-header">Visual Processing</div>
@@ -325,7 +436,16 @@
                 <span id="btn-brain-icon">🧠</span>
                 <span id="btn-brain-text">Activate Neural Compensation</span>
             </button>
-            <div class="hint">Simulates cortical sharpening — the brain fills in plausible detail from blurry input, increasing perceived sharpness but introducing errors at high defocus.</div>
+            <div class="clarity-bar" id="clarity-bar" style="display:none;">
+                <div class="clarity-track"><div class="clarity-fill" id="clarity-fill" style="width:0%"></div></div>
+                <div class="clarity-label"><span>Neural Clarity</span><span class="clarity-pct" id="clarity-pct">0%</span></div>
+            </div>
+            <div class="hint">Simulates cortical sharpening — the brain enhances edges from blurry input. More effective at low defocus; less at high. May introduce artifacts.</div>
+            <button class="btn btn-squint" id="btn-squint-toggle" onclick="sim.toggleSquinting()" style="margin-top:8px;">
+                <span>👁️</span>
+                <span id="btn-squint-text">Simulate Squinting</span>
+            </button>
+            <div class="hint">Squinting narrows the pupil (pinhole effect), increasing depth of focus but reducing brightness.</div>
         </div>
 
         <!-- Correction -->
@@ -336,7 +456,7 @@
                 <span id="btn-text">Add Corrective Lens</span>
             </button>
 
-            <div id="lens-controls" style="opacity:0.35;pointer-events:none;margin-top:16px;transition:opacity 0.3s;">
+            <div id="lens-controls" style="opacity:0.3;pointer-events:none;margin-top:14px;transition:opacity 0.35s;">
                 <div class="control-row"><label>Lens Sphere</label><span id="val-lens-sph" class="val">0.00 D</span></div>
                 <input type="range" id="inp-lens-sph" min="-12" max="12" step="0.25" value="0" oninput="sim.manualLens()">
                 <div class="control-row"><label>Lens Cylinder</label><span id="val-lens-cyl" class="val">0.00 D</span></div>
@@ -353,83 +473,66 @@
 const sim = {
     scene: null, camera: null, renderer: null, controls: null,
 
-    // Optical constants
-    CORNEA_POWER: 43.0,   // average corneal power diopters
-    LENS_POWER: 17.0,     // average crystalline lens power diopters at rest
-    BASE_POWER: 60.0,     // total optical power (approx cornea + lens)
-    K: 1.0 / 1336.0,      // n/f for schematic eye (n=1.336)
-    PUPIL_DIAMETER: 5.0,   // mm (mesopic)
-    ACCOM_AMP: 4.5,        // diopters of accommodation (young adult)
+    // ──── OPTICAL CONSTANTS ────
+    CORNEA_POWER: 43.0,
+    LENS_POWER_REST: 17.0,
+    BASE_POWER: 60.0,
+    K: 1.0 / 1336.0,
 
     state: {
         rx: { sph: -3.00, cyl: 0.00, axis: 180 },
         eye: { axialLength: 24.0, focalLength: 22.27 },
         lens: { active: false, sph: 0, cyl: 0, axis: 180 },
+        pupilDiameter: 5.0,
+        age: 25,
         sceneMode: 'landscape',
-        brainMode: false
+        brainMode: false,
+        squinting: false
     },
 
-    objects: { eyeGroup: null, eyeContainer: null, eyeMesh: null, lensMesh: null, rays: [] },
+    objects: {},
     mats: {},
 
+    // Accommodation amplitude from age (Hofstetter's formula)
+    getAccomAmp() {
+        return Math.max(0.5, 18.5 - 0.3 * this.state.age);
+    },
+
+    getEffectivePupil() {
+        let p = this.state.pupilDiameter;
+        if (this.state.squinting) p = Math.max(1.5, p * 0.35);
+        return p;
+    },
+
+    // ──── INIT ────
     init() {
         const c = document.getElementById('canvas-wrapper');
         const w = c.clientWidth, h = c.clientHeight;
 
         this.scene = new THREE.Scene();
-        this.camera = new THREE.PerspectiveCamera(38, w / h, 0.1, 200);
-        this.camera.position.set(-20, 14, 34);
-        this.camera.lookAt(0, 0, 8);
+        this.camera = new THREE.PerspectiveCamera(36, w / h, 0.1, 300);
+        this.camera.position.set(-22, 12, 36);
+        this.camera.lookAt(0, 0, 10);
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         this.renderer.setSize(w, h);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.2;
+        this.renderer.toneMappingExposure = 1.1;
         c.appendChild(this.renderer.domElement);
 
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.08;
+        this.controls.dampingFactor = 0.07;
         this.controls.enablePan = false;
         this.controls.minDistance = 15;
-        this.controls.maxDistance = 60;
+        this.controls.maxDistance = 70;
+        this.controls.target.set(0, 0, 10);
 
-        // Lighting
-        this.scene.add(new THREE.AmbientLight(0x334466, 2));
-        const key = new THREE.SpotLight(0xffffff, 4);
-        key.position.set(10, 25, 10);
-        key.castShadow = false;
-        this.scene.add(key);
-        const rim = new THREE.PointLight(0x3b82f6, 1.5);
-        rim.position.set(-12, 0, -5);
-        this.scene.add(rim);
-        const fill = new THREE.PointLight(0x8844aa, 0.8);
-        fill.position.set(0, -10, 20);
-        this.scene.add(fill);
-
-        // Materials
-        this.mats.glass = new THREE.MeshPhysicalMaterial({
-            color: 0x88bbff, metalness: 0.0, roughness: 0.05,
-            transmission: 0.3, thickness: 2.0, transparent: true, opacity: 0.6,
-            ior: 1.523, side: THREE.DoubleSide, clearcoat: 1.0, clearcoatRoughness: 0.05
-        });
-        this.mats.sclera = new THREE.MeshPhongMaterial({
-            color: 0xdddddd, opacity: 0.12, transparent: true, wireframe: true
-        });
-        this.mats.cornea = new THREE.MeshPhysicalMaterial({
-            color: 0xaaccff, metalness: 0.0, roughness: 0.0,
-            transmission: 0.8, transparent: true, opacity: 0.3,
-            ior: 1.376, side: THREE.DoubleSide
-        });
-        this.mats.ray = new THREE.LineBasicMaterial({
-            color: 0x3b82f6, transparent: true, opacity: 0.65, linewidth: 1
-        });
-        this.mats.rayConverge = new THREE.LineBasicMaterial({
-            color: 0x22c55e, transparent: true, opacity: 0.65, linewidth: 1
-        });
-
-        this.buildScene();
+        this.setupLighting();
+        this.createMaterials();
+        this.buildEyeModel();
+        this.buildRays();
         this.updateRx();
         this.animate();
 
@@ -441,48 +544,183 @@ const sim = {
         });
     },
 
-    buildScene() {
+    setupLighting() {
+        this.scene.add(new THREE.AmbientLight(0x283848, 2.5));
+        const key = new THREE.SpotLight(0xffffff, 3.5);
+        key.position.set(15, 25, 5);
+        this.scene.add(key);
+        const rim = new THREE.PointLight(0x3b82f6, 1.8);
+        rim.position.set(-15, 0, -8);
+        this.scene.add(rim);
+        const fill = new THREE.PointLight(0x7c3aed, 0.6);
+        fill.position.set(0, -12, 20);
+        this.scene.add(fill);
+        const back = new THREE.PointLight(0x22c55e, 0.4);
+        back.position.set(5, 5, 30);
+        this.scene.add(back);
+    },
+
+    createMaterials() {
+        this.mats.glass = new THREE.MeshPhysicalMaterial({
+            color: 0x88bbff, metalness: 0.0, roughness: 0.05,
+            transmission: 0.35, thickness: 2.0, transparent: true, opacity: 0.55,
+            ior: 1.523, side: THREE.DoubleSide, clearcoat: 1.0, clearcoatRoughness: 0.05
+        });
+        this.mats.sclera = new THREE.MeshPhongMaterial({
+            color: 0xd8dce8, opacity: 0.08, transparent: true, wireframe: true
+        });
+        this.mats.scleraShell = new THREE.MeshPhongMaterial({
+            color: 0xeeeef4, opacity: 0.04, transparent: true, side: THREE.DoubleSide
+        });
+        this.mats.cornea = new THREE.MeshPhysicalMaterial({
+            color: 0xaaddff, metalness: 0.0, roughness: 0.0,
+            transmission: 0.85, transparent: true, opacity: 0.25,
+            ior: 1.376, side: THREE.DoubleSide
+        });
+        this.mats.iris = new THREE.MeshPhongMaterial({
+            color: 0x4488aa, emissive: 0x112233, emissiveIntensity: 0.3,
+            side: THREE.DoubleSide
+        });
+        this.mats.pupil = new THREE.MeshBasicMaterial({
+            color: 0x000000, side: THREE.DoubleSide
+        });
+        this.mats.cLens = new THREE.MeshPhysicalMaterial({
+            color: 0xeeeeff, metalness: 0.0, roughness: 0.0,
+            transmission: 0.9, transparent: true, opacity: 0.15,
+            ior: 1.42, side: THREE.DoubleSide
+        });
+        this.mats.retina = new THREE.MeshBasicMaterial({
+            color: 0xee4444, side: THREE.DoubleSide, opacity: 0.12, transparent: true
+        });
+        this.mats.fovea = new THREE.MeshBasicMaterial({
+            color: 0x22c55e, side: THREE.DoubleSide, opacity: 0.9, transparent: true
+        });
+        this.mats.focalGlow = new THREE.MeshBasicMaterial({
+            color: 0xf59e0b, transparent: true, opacity: 0.8
+        });
+        this.mats.ray = new THREE.LineBasicMaterial({
+            color: 0x3b82f6, transparent: true, opacity: 0.6, linewidth: 1
+        });
+    },
+
+    // ──── 3D EYE MODEL ────
+    buildEyeModel() {
         this.objects.eyeGroup = new THREE.Group();
         this.scene.add(this.objects.eyeGroup);
-        this.objects.eyeContainer = new THREE.Group();
-        this.objects.eyeGroup.add(this.objects.eyeContainer);
 
-        // Sclera (wireframe sphere)
-        const eyeGeo = new THREE.SphereGeometry(12, 32, 24);
-        eyeGeo.rotateX(Math.PI / 2);
-        this.objects.eyeMesh = new THREE.Mesh(eyeGeo, this.mats.sclera);
-        this.objects.eyeContainer.add(this.objects.eyeMesh);
+        // Sclera wireframe
+        const sGeo = new THREE.SphereGeometry(12, 36, 28);
+        sGeo.rotateX(Math.PI / 2);
+        this.objects.sclera = new THREE.Mesh(sGeo, this.mats.sclera);
+        this.objects.eyeGroup.add(this.objects.sclera);
 
-        // Cornea bump
-        const corneaGeo = new THREE.SphereGeometry(5, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.45);
-        const corneaMesh = new THREE.Mesh(corneaGeo, this.mats.cornea);
-        corneaMesh.rotation.x = -Math.PI / 2;
-        corneaMesh.position.z = -1;
-        this.objects.eyeContainer.add(corneaMesh);
+        // Sclera shell (subtle solid)
+        const shellGeo = new THREE.SphereGeometry(11.9, 36, 28);
+        shellGeo.rotateX(Math.PI / 2);
+        this.objects.shell = new THREE.Mesh(shellGeo, this.mats.scleraShell);
+        this.objects.eyeGroup.add(this.objects.shell);
+
+        // Cornea
+        const cGeo = new THREE.SphereGeometry(5.2, 28, 18, 0, Math.PI * 2, 0, Math.PI * 0.44);
+        this.objects.cornea = new THREE.Mesh(cGeo, this.mats.cornea);
+        this.objects.cornea.rotation.x = -Math.PI / 2;
+        this.objects.cornea.position.z = -0.5;
+        this.objects.eyeGroup.add(this.objects.cornea);
+
+        // Iris (ring)
+        const irisGeo = new THREE.RingGeometry(2.5, 5.5, 48);
+        this.objects.iris = new THREE.Mesh(irisGeo, this.mats.iris);
+        this.objects.iris.position.z = 2.8;
+        this.objects.eyeGroup.add(this.objects.iris);
+
+        // Pupil (dark disc)
+        const pupilGeo = new THREE.CircleGeometry(2.5, 48);
+        this.objects.pupilMesh = new THREE.Mesh(pupilGeo, this.mats.pupil);
+        this.objects.pupilMesh.position.z = 2.79;
+        this.objects.eyeGroup.add(this.objects.pupilMesh);
+
+        // Crystalline lens (biconvex-ish disc)
+        const clGeo = new THREE.SphereGeometry(4.2, 32, 16, 0, Math.PI * 2, Math.PI * 0.3, Math.PI * 0.4);
+        this.objects.cLens = new THREE.Mesh(clGeo, this.mats.cLens);
+        this.objects.cLens.rotation.x = -Math.PI / 2;
+        this.objects.cLens.position.z = 5.5;
+        this.objects.eyeGroup.add(this.objects.cLens);
 
         // Retina plane
-        const retGeo = new THREE.PlaneGeometry(8, 8);
-        const retMat = new THREE.MeshBasicMaterial({ color: 0xee4444, side: THREE.DoubleSide, opacity: 0.15, transparent: true });
-        this.objects.retinaPlane = new THREE.Mesh(retGeo, retMat);
+        const rGeo = new THREE.CircleGeometry(5, 32);
+        this.objects.retinaPlane = new THREE.Mesh(rGeo, this.mats.retina);
+        this.objects.retinaPlane.position.z = 22.27;
         this.objects.eyeGroup.add(this.objects.retinaPlane);
 
+        // Fovea marker
+        const fGeo = new THREE.CircleGeometry(0.6, 24);
+        this.objects.fovea = new THREE.Mesh(fGeo, this.mats.fovea.clone());
+        this.objects.fovea.position.z = 22.26;
+        this.objects.eyeGroup.add(this.objects.fovea);
+
+        // Fovea ring (convergence indicator)
+        const frGeo = new THREE.RingGeometry(0.7, 1.2, 32);
+        this.objects.foveaRing = new THREE.Mesh(frGeo, new THREE.MeshBasicMaterial({
+            color: 0x22c55e, transparent: true, opacity: 0.5, side: THREE.DoubleSide
+        }));
+        this.objects.foveaRing.position.z = 22.25;
+        this.objects.eyeGroup.add(this.objects.foveaRing);
+
+        // Focal point sphere
+        const fpGeo = new THREE.SphereGeometry(0.5, 16, 12);
+        this.objects.focalPoint = new THREE.Mesh(fpGeo, this.mats.focalGlow.clone());
+        this.objects.focalPoint.position.z = 22.27;
+        this.objects.eyeGroup.add(this.objects.focalPoint);
+
+        // Focal point light
+        this.objects.focalLight = new THREE.PointLight(0xf59e0b, 0.5, 8);
+        this.objects.focalLight.position.z = 22.27;
+        this.objects.eyeGroup.add(this.objects.focalLight);
+
         // Corrective lens
-        const lensGeo = new THREE.CylinderGeometry(4.5, 4.5, 0.2, 128, 16, false);
-        this.objects.lensMesh = new THREE.Mesh(lensGeo, this.mats.glass);
+        const lGeo = new THREE.CylinderGeometry(4.8, 4.8, 0.2, 128, 16, false);
+        this.objects.lensMesh = new THREE.Mesh(lGeo, this.mats.glass);
         this.objects.lensMesh.position.z = -9;
         this.objects.lensMesh.rotation.x = Math.PI / 2;
         this.objects.lensMesh.visible = false;
-        this.objects.lensMesh.userData.baseGeometry = lensGeo.clone();
+        this.objects.lensMesh.userData.baseGeometry = lGeo.clone();
         this.scene.add(this.objects.lensMesh);
 
-        // Rays
-        for (let i = 0; i < 36; i++) {
-            const angle = (i / 36) * Math.PI * 2;
-            const r = 3.5 * (i % 3 === 0 ? 1.0 : i % 3 === 1 ? 0.65 : 0.35);
+        // Optical axis line
+        const axisGeo = new THREE.BufferGeometry();
+        axisGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+            0, 0, -24, 0, 0, 28
+        ]), 3));
+        const axisLine = new THREE.Line(axisGeo, new THREE.LineBasicMaterial({
+            color: 0xffffff, transparent: true, opacity: 0.06
+        }));
+        this.objects.eyeGroup.add(axisLine);
+    },
+
+    updatePupilGeometry() {
+        const pRadius = (this.getEffectivePupil() / 2) * (12 / 12); // scale factor (eye model radius 12 ≈ 12mm)
+        const irisInner = Math.max(0.5, pRadius);
+        // Recreate iris
+        this.objects.iris.geometry.dispose();
+        this.objects.iris.geometry = new THREE.RingGeometry(irisInner, 5.5, 48);
+        // Recreate pupil
+        this.objects.pupilMesh.geometry.dispose();
+        this.objects.pupilMesh.geometry = new THREE.CircleGeometry(irisInner, 48);
+    },
+
+    // ──── RAYS ────
+    buildRays() {
+        this.objects.rays = [];
+        const RAY_COUNT = 30;
+        for (let i = 0; i < RAY_COUNT; i++) {
+            const angle = (i / RAY_COUNT) * Math.PI * 2;
+            const ring = i % 3;
+            const r = 3.2 * (ring === 0 ? 1.0 : ring === 1 ? 0.6 : 0.3);
             const x = Math.cos(angle) * r;
             const y = Math.sin(angle) * r;
+            // 6 points: source, at_lens, post_lens, at_cornea, at_cLens, at_retina
             const geo = new THREE.BufferGeometry();
-            geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3));
+            geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(18), 3));
             const line = new THREE.Line(geo, this.mats.ray.clone());
             line.userData = { ox: x, oy: y };
             this.scene.add(line);
@@ -490,38 +728,85 @@ const sim = {
         }
     },
 
+    // ──── SCENE SWITCH ────
     setScene(mode, btn) {
         this.state.sceneMode = mode;
         document.querySelectorAll('.scene-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        // Adjust pupil for scene lighting
+        if (mode === 'night' && this.state.pupilDiameter < 5) {
+            // Suggest larger pupil for night
+        }
         this.calculateRays();
     },
 
+    // ──── BRAIN MODE ────
     toggleBrainMode() {
         this.state.brainMode = !this.state.brainMode;
         const btn = document.getElementById('btn-brain-toggle');
         const ind = document.getElementById('brain-indicator');
+        const bar = document.getElementById('clarity-bar');
         if (this.state.brainMode) {
             btn.classList.add('active');
             ind.style.display = 'block';
+            bar.style.display = 'block';
             document.getElementById('btn-brain-text').innerText = 'Deactivate Neural Compensation';
         } else {
             btn.classList.remove('active');
             ind.style.display = 'none';
+            bar.style.display = 'none';
             document.getElementById('btn-brain-text').innerText = 'Activate Neural Compensation';
         }
         this.calculateRays();
     },
 
+    toggleSquinting() {
+        this.state.squinting = !this.state.squinting;
+        const btn = document.getElementById('btn-squint-toggle');
+        const ind = document.getElementById('squint-indicator');
+        const overlay = document.getElementById('squint-overlay');
+        if (this.state.squinting) {
+            btn.classList.add('active');
+            ind.style.display = 'block';
+            overlay.style.opacity = '1';
+            document.getElementById('btn-squint-text').innerText = 'Stop Squinting';
+            this.drawSquintOverlay();
+        } else {
+            btn.classList.remove('active');
+            ind.style.display = 'none';
+            overlay.style.opacity = '0';
+            document.getElementById('btn-squint-text').innerText = 'Simulate Squinting';
+        }
+        this.updatePupilGeometry();
+        this.calculateRays();
+    },
+
+    drawSquintOverlay() {
+        const cvs = document.getElementById('squint-overlay');
+        const ctx = cvs.getContext('2d');
+        ctx.clearRect(0, 0, 400, 400);
+        // Eyelid simulation - darken top and bottom
+        const g1 = ctx.createLinearGradient(0, 0, 0, 140);
+        g1.addColorStop(0, 'rgba(0,0,0,0.85)');
+        g1.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g1;
+        ctx.fillRect(0, 0, 400, 140);
+        const g2 = ctx.createLinearGradient(0, 260, 0, 400);
+        g2.addColorStop(0, 'rgba(0,0,0,0)');
+        g2.addColorStop(1, 'rgba(0,0,0,0.85)');
+        ctx.fillStyle = g2;
+        ctx.fillRect(0, 260, 400, 140);
+    },
+
+    // ──── LENS ────
     toggleLens() {
         this.state.lens.active = !this.state.lens.active;
         const btn = document.getElementById('btn-lens-toggle');
         const ctrls = document.getElementById('lens-controls');
-
         if (this.state.lens.active) {
-            // Auto-correct: set lens = negative of Rx (corrective)
-            this.state.lens.sph = -this.state.rx.sph;
-            this.state.lens.cyl = -this.state.rx.cyl;
+            // Auto-correct: lens power = Rx (corrective lens matches prescription)
+            this.state.lens.sph = this.state.rx.sph;
+            this.state.lens.cyl = this.state.rx.cyl;
             this.state.lens.axis = this.state.rx.axis;
             document.getElementById('inp-lens-sph').value = this.state.lens.sph;
             document.getElementById('inp-lens-cyl').value = this.state.lens.cyl;
@@ -533,13 +818,14 @@ const sim = {
         } else {
             btn.classList.remove('active');
             document.getElementById('btn-text').innerText = 'Add Corrective Lens';
-            ctrls.style.opacity = 0.35; ctrls.style.pointerEvents = 'none';
+            ctrls.style.opacity = 0.3; ctrls.style.pointerEvents = 'none';
             this.objects.lensMesh.visible = false;
         }
         this.updateLensUI();
         this.calculateRays();
     },
 
+    // ──── UPDATE RX ────
     updateRx() {
         this.state.rx.sph = parseFloat(document.getElementById('inp-rx-sph').value);
         this.state.rx.cyl = parseFloat(document.getElementById('inp-rx-cyl').value);
@@ -549,31 +835,49 @@ const sim = {
         document.getElementById('val-rx-cyl').innerText = this.state.rx.cyl.toFixed(2) + ' D';
         document.getElementById('val-rx-axis').innerText = this.state.rx.axis + '°';
 
-        // Accurate axial length from refractive error
-        // emmetropic eye: 1/f = P_total, f = n/P = 1336/60 = 22.27mm
-        // myopic: longer eye, hyperopic: shorter
-        const totalP = this.BASE_POWER;
-        const emmetropicAL = 1336.0 / totalP; // ~22.27mm
-        // Each diopter of myopia ≈ 0.37mm longer axial length (Stenstrom)
+        // Axial length from refractive error (Stenstrom: ~0.37mm per diopter)
+        const emmetropicAL = 1336.0 / this.BASE_POWER;
         this.state.eye.axialLength = emmetropicAL - (this.state.rx.sph * 0.37);
-        this.state.eye.focalLength = 1336.0 / totalP;
+        this.state.eye.focalLength = 1336.0 / this.BASE_POWER;
 
-        // Scale 3D eye model
+        // Update 3D eye geometry
         const scaleZ = this.state.eye.axialLength / emmetropicAL;
-        const axisRad = this.state.rx.axis * (Math.PI / 180);
-        this.objects.eyeContainer.rotation.z = axisRad;
+        this.objects.sclera.scale.set(1, 1, scaleZ);
+        this.objects.sclera.position.z = 12 * scaleZ;
+        this.objects.shell.scale.set(1, 1, scaleZ);
+        this.objects.shell.position.z = 12 * scaleZ;
 
-        const squeeze = Math.abs(this.state.rx.cyl) * 0.04;
-        if (this.state.rx.cyl < 0) {
-            this.objects.eyeMesh.scale.set(1.0 + squeeze, 1.0 - squeeze, scaleZ);
-        } else {
-            this.objects.eyeMesh.scale.set(1.0, 1.0, scaleZ);
-        }
-        this.objects.eyeMesh.position.z = 12 * scaleZ;
+        // Retina plane position
         this.objects.retinaPlane.position.z = this.state.eye.axialLength;
+        this.objects.fovea.position.z = this.state.eye.axialLength - 0.01;
+        this.objects.foveaRing.position.z = this.state.eye.axialLength - 0.02;
+
+        // Astigmatic squeeze
+        const squeeze = Math.abs(this.state.rx.cyl) * 0.035;
+        if (this.state.rx.cyl < 0) {
+            this.objects.sclera.scale.x = 1.0 + squeeze;
+            this.objects.sclera.scale.y = 1.0 - squeeze;
+            this.objects.shell.scale.x = 1.0 + squeeze;
+            this.objects.shell.scale.y = 1.0 - squeeze;
+        }
 
         this.calculateRays();
         this.updateVA();
+    },
+
+    updatePupil() {
+        this.state.pupilDiameter = parseFloat(document.getElementById('inp-pupil').value);
+        document.getElementById('val-pupil').innerText = this.state.pupilDiameter.toFixed(1) + ' mm';
+        document.getElementById('val-pupil-pill').innerText = this.getEffectivePupil().toFixed(1) + 'mm';
+        this.updatePupilGeometry();
+        this.calculateRays();
+    },
+
+    updateAge() {
+        this.state.age = parseInt(document.getElementById('inp-age').value);
+        const amp = this.getAccomAmp();
+        document.getElementById('val-age').innerText = this.state.age + ' yrs (' + amp.toFixed(1) + 'D)';
+        this.calculateRays();
     },
 
     manualLens() {
@@ -597,19 +901,13 @@ const sim = {
         const pos = mesh.geometry.attributes.position;
         const basePos = mesh.userData.baseGeometry.attributes.position;
         const count = pos.count;
-        const s = this.state.lens.sph;
-        const cy = this.state.lens.cyl;
-        const aRad = this.state.lens.axis * (Math.PI / 180);
-        const pf = 0.02;
-
+        const s = this.state.lens.sph, cy = this.state.lens.cyl;
+        const aRad = this.state.lens.axis * (Math.PI / 180), pf = 0.018;
         for (let i = 0; i < count; i++) {
-            const x = basePos.getX(i);
-            const y = basePos.getY(i);
-            const z = basePos.getZ(i);
+            const x = basePos.getX(i), y = basePos.getY(i), z = basePos.getZ(i);
             const r = Math.sqrt(x * x + z * z);
             const theta = Math.atan2(x, z);
-            const axisDiff = theta - aRad;
-            const localPower = s + cy * Math.pow(Math.cos(axisDiff), 2);
+            const localPower = s + cy * Math.pow(Math.cos(theta - aRad), 2);
             const sag = r * r * (-localPower) * pf;
             const sign = Math.sign(y);
             let ht = 0.1 + sag;
@@ -620,32 +918,48 @@ const sim = {
         mesh.geometry.computeVertexNormals();
     },
 
-    // ──── CORE OPTICS ────
+    // ──── PRESETS ────
+    loadPreset(val) {
+        const presets = {
+            'emmetropic':   { sph: 0, cyl: 0, axis: 180 },
+            'mild-myopia':  { sph: -1.50, cyl: 0, axis: 180 },
+            'mod-myopia':   { sph: -3.00, cyl: 0, axis: 180 },
+            'high-myopia':  { sph: -6.00, cyl: 0, axis: 180 },
+            'low-hyp':      { sph: 1.50, cyl: 0, axis: 180 },
+            'mod-hyp':      { sph: 3.00, cyl: 0, axis: 180 },
+            'astig-only':   { sph: 0, cyl: -1.50, axis: 90 },
+            'myopia-astig': { sph: -2.00, cyl: -1.50, axis: 180 },
+            'high-astig':   { sph: 0, cyl: -3.50, axis: 45 },
+        };
+        if (!presets[val]) return;
+        const p = presets[val];
+        document.getElementById('inp-rx-sph').value = p.sph;
+        document.getElementById('inp-rx-cyl').value = p.cyl;
+        document.getElementById('inp-rx-axis').value = p.axis;
+        // Remove correction when changing preset
+        if (this.state.lens.active) this.toggleLens();
+        this.updateRx();
+    },
 
-    // Residual refractive error after lens correction
+    // ──── CORE OPTICS ────
     getResidualError() {
         let resSph = this.state.rx.sph;
         let resCyl = this.state.rx.cyl;
         let resAxis = this.state.rx.axis;
-
         if (this.state.lens.active) {
-            // Simple power vector combination for oblique-axis correction
             const rxAxis = this.state.rx.axis * Math.PI / 180;
             const lAxis = this.state.lens.axis * Math.PI / 180;
-
-            // Power vectors: M, J0, J45
+            // Power vectors
             const rxM = this.state.rx.sph + this.state.rx.cyl / 2;
             const rxJ0 = (-this.state.rx.cyl / 2) * Math.cos(2 * rxAxis);
             const rxJ45 = (-this.state.rx.cyl / 2) * Math.sin(2 * rxAxis);
-
             const lM = this.state.lens.sph + this.state.lens.cyl / 2;
             const lJ0 = (-this.state.lens.cyl / 2) * Math.cos(2 * lAxis);
             const lJ45 = (-this.state.lens.cyl / 2) * Math.sin(2 * lAxis);
-
-            const tM = rxM + lM;
-            const tJ0 = rxJ0 + lJ0;
-            const tJ45 = rxJ45 + lJ45;
-
+            // Residual = Rx - Lens (when equal, residual = 0)
+            const tM = rxM - lM;
+            const tJ0 = rxJ0 - lJ0;
+            const tJ45 = rxJ45 - lJ45;
             resCyl = -2 * Math.sqrt(tJ0 * tJ0 + tJ45 * tJ45);
             resAxis = (Math.atan2(tJ45, tJ0) / 2) * 180 / Math.PI;
             if (resAxis < 0) resAxis += 180;
@@ -654,65 +968,653 @@ const sim = {
         return { sph: resSph, cyl: resCyl, axis: resAxis };
     },
 
-    // Circle of confusion diameter (mm on retina) for given object vergence
-    // Uses accommodation model: eye can accommodate up to ACCOM_AMP diopters
     getCircleOfConfusion(objectVergenceD) {
         const res = this.getResidualError();
         const sphEquiv = res.sph + res.cyl / 2;
-
-        // Demand = object vergence; far point = -1/sph (for myope, sph is negative)
-        // Range of clear vision: far point to near point
-        const farPointD = -sphEquiv; // diopter distance of far point
-        const nearPointD = farPointD + this.ACCOM_AMP;
-
+        const farPointD = -sphEquiv;
+        const nearPointD = farPointD + this.getAccomAmp();
         let defocusD = 0;
-        if (objectVergenceD < farPointD) {
-            defocusD = farPointD - objectVergenceD; // beyond far point
-        } else if (objectVergenceD > nearPointD) {
-            defocusD = objectVergenceD - nearPointD; // inside near point
-        }
-
-        // Circle of confusion = pupil * defocus / totalPower
-        // Simplified: blur circle (radians) ≈ pupilDiameter * defocusD / 2
-        // In pixels for rendering, we scale
+        if (objectVergenceD < farPointD) defocusD = farPointD - objectVergenceD;
+        else if (objectVergenceD > nearPointD) defocusD = objectVergenceD - nearPointD;
         return Math.abs(defocusD);
     },
 
-    // Astigmatic blur component (directional)
-    getAstigBlur(meridianAngle) {
-        const res = this.getResidualError();
-        const axRad = res.axis * Math.PI / 180;
-        const diff = meridianAngle - axRad;
-        return Math.abs(res.cyl) * Math.pow(Math.sin(diff), 2);
-    },
-
-    // Blur in canvas pixels
     getBlurPx(objectVergenceD, maxPx) {
         const coc = this.getCircleOfConfusion(objectVergenceD);
-        let blur = coc * 8; // scale factor for canvas rendering
-
+        const pupilFactor = this.getEffectivePupil() / 5.0;
+        let blur = coc * 7 * pupilFactor;
         if (this.state.brainMode) {
-            // Neural compensation: reduces perceived blur by up to ~40%
-            // but less effective at high defocus (>4D)
-            const totalError = Math.abs(this.getResidualError().sph) + Math.abs(this.getResidualError().cyl);
-            const efficiency = Math.max(0, 1.0 - totalError / 8.0);
-            blur *= (1.0 - efficiency * 0.4);
+            const totalErr = Math.abs(this.getResidualError().sph) + Math.abs(this.getResidualError().cyl);
+            // Diminishing returns: effective up to ~3D, drops logarithmically
+            const efficiency = Math.max(0, 1.0 - Math.pow(totalErr / 6.0, 1.5));
+            blur *= (1.0 - efficiency * 0.45);
+        }
+        return Math.min(blur, maxPx || 55);
+    },
+
+    getNeuralClarity() {
+        const res = this.getResidualError();
+        const totalErr = Math.abs(res.sph + res.cyl / 2) + Math.abs(res.cyl) * 0.5;
+        if (totalErr < 0.25) return 100;
+        const clarity = Math.max(0, 100 * (1.0 - Math.pow(totalErr / 6.0, 1.3)));
+        return Math.round(clarity);
+    },
+
+    getFocalPointZ() {
+        // Where do rays from infinity converge?
+        const res = this.getResidualError();
+        const se = res.sph + res.cyl / 2;
+        // Emmetropic focal point = axialLength of normal eye
+        const normalFL = 1336.0 / this.BASE_POWER; // ~22.27mm
+        // With residual error, effective eye power changes
+        const effectiveP = this.BASE_POWER - se; // if negative SE (uncorrected myopia), power is higher
+        if (effectiveP <= 0) return 50; // extreme hyperopia, focal point at infinity
+        const focalZ = 1336.0 / effectiveP;
+        return focalZ;
+    },
+
+    // ──── RAY TRACING ────
+    calculateRays() {
+        const Z_SRC = -24, Z_LENS = -9, Z_CORNEA = 0, Z_CLENS = 5;
+        const Z_RETINA = this.state.eye.axialLength;
+        const K = this.K;
+        const hits = [];
+
+        // Calculate focal point position
+        const focalZ = this.getFocalPointZ();
+        this.objects.focalPoint.position.z = Math.min(Math.max(focalZ, 5), 30);
+        this.objects.focalLight.position.z = this.objects.focalPoint.position.z;
+
+        // Focal point color based on how close it is to retina
+        const gapMm = focalZ - Z_RETINA;
+        const absGap = Math.abs(gapMm);
+        if (absGap < 0.3) {
+            this.objects.focalPoint.material.color.setHex(0x22c55e);
+            this.objects.focalLight.color.setHex(0x22c55e);
+            this.objects.foveaRing.material.color.setHex(0x22c55e);
+            this.objects.foveaRing.material.opacity = 0.7;
+            this.objects.fovea.material.color.setHex(0x22c55e);
+        } else if (absGap < 1.5) {
+            this.objects.focalPoint.material.color.setHex(0xf59e0b);
+            this.objects.focalLight.color.setHex(0xf59e0b);
+            this.objects.foveaRing.material.color.setHex(0xf59e0b);
+            this.objects.foveaRing.material.opacity = 0.5;
+            this.objects.fovea.material.color.setHex(0xf59e0b);
+        } else {
+            this.objects.focalPoint.material.color.setHex(0xef4444);
+            this.objects.focalLight.color.setHex(0xef4444);
+            this.objects.foveaRing.material.color.setHex(0xef4444);
+            this.objects.foveaRing.material.opacity = 0.3;
+            this.objects.fovea.material.color.setHex(0xef4444);
         }
 
-        return Math.min(blur, maxPx || 50);
+        // Update focal info chips
+        document.getElementById('fc-focal-val').innerText = focalZ.toFixed(1) + 'mm';
+        document.getElementById('fc-retina-val').innerText = Z_RETINA.toFixed(1) + 'mm';
+        const gap = focalZ - Z_RETINA;
+        document.getElementById('fc-gap-val').innerText = (gap >= 0 ? '+' : '') + gap.toFixed(1) + 'mm';
+        const fcFocal = document.getElementById('fc-focal');
+        const fcGap = document.getElementById('fc-gap');
+        fcFocal.className = 'focal-chip' + (absGap < 0.3 ? ' hit' : ' miss');
+        fcGap.className = 'focal-chip' + (absGap < 0.3 ? ' hit' : ' miss');
+
+        this.objects.rays.forEach(ray => {
+            const ox = ray.userData.ox, oy = ray.userData.oy;
+            const pos = ray.geometry.attributes.position.array;
+
+            // Point 0: Source
+            pos[0] = ox; pos[1] = oy; pos[2] = Z_SRC;
+            // Point 1: At corrective lens
+            pos[3] = ox; pos[4] = oy; pos[5] = Z_LENS;
+
+            let slopeX = 0, slopeY = 0;
+
+            // Refraction through corrective lens
+            if (this.state.lens.active) {
+                const angL = Math.atan2(oy, ox);
+                const lAxisRad = this.state.lens.axis * (Math.PI / 180);
+                const lCylP = this.state.lens.cyl * Math.pow(Math.sin(angL - lAxisRad), 2);
+                const lTotalP = this.state.lens.sph + lCylP;
+                // Corrective lens: Rx power (negative for myopia = diverge)
+                slopeX -= ox * lTotalP * K;
+                slopeY -= oy * lTotalP * K;
+            }
+
+            // Point 2: After lens, approaching cornea
+            const d0 = Z_CORNEA - Z_LENS;
+            const preCorneaX = ox + slopeX * d0;
+            const preCorneaY = oy + slopeY * d0;
+            pos[6] = preCorneaX; pos[7] = preCorneaY; pos[8] = Z_CORNEA;
+
+            // Refraction at cornea (43D)
+            slopeX -= preCorneaX * this.CORNEA_POWER * K;
+            slopeY -= preCorneaY * this.CORNEA_POWER * K;
+
+            // Point 3: At crystalline lens
+            const d1 = Z_CLENS - Z_CORNEA;
+            const clX = preCorneaX + slopeX * d1;
+            const clY = preCorneaY + slopeY * d1;
+            pos[9] = clX; pos[10] = clY; pos[11] = Z_CLENS;
+
+            // Refraction at crystalline lens
+            // Effective crystalline lens power includes any refractive error contribution
+            const angC = Math.atan2(clY, clX);
+            const patAxisRad = this.state.rx.axis * (Math.PI / 180);
+            const cylComp = -this.state.rx.cyl * Math.pow(Math.sin(angC - patAxisRad), 2);
+            const eyeRxContrib = -this.state.rx.sph + cylComp;
+            const cLensPower = this.LENS_POWER_REST + eyeRxContrib;
+            slopeX -= clX * cLensPower * K;
+            slopeY -= clY * cLensPower * K;
+
+            // Point 4: At retina
+            const d2 = Z_RETINA - Z_CLENS;
+            const retX = clX + slopeX * d2;
+            const retY = clY + slopeY * d2;
+            pos[12] = retX; pos[13] = retY; pos[14] = Z_RETINA;
+
+            // Point 5: slightly past retina (for hyperopia visualization)
+            const retX2 = clX + slopeX * (d2 + 3);
+            const retY2 = clY + slopeY * (d2 + 3);
+            pos[15] = retX2; pos[16] = retY2; pos[17] = Z_RETINA + 3;
+
+            ray.geometry.attributes.position.needsUpdate = true;
+
+            // Color by retinal convergence
+            const dist = Math.sqrt(retX * retX + retY * retY);
+            if (dist < 0.5) {
+                ray.material.color.setHex(0x22c55e); ray.material.opacity = 0.7;
+            } else if (dist < 2) {
+                ray.material.color.setHex(0xf59e0b); ray.material.opacity = 0.55;
+            } else {
+                ray.material.color.setHex(0x3b82f6); ray.material.opacity = 0.4;
+            }
+            hits.push({ x: retX, y: retY });
+        });
+
+        // Update pupil pill
+        document.getElementById('val-pupil-pill').innerText = this.getEffectivePupil().toFixed(1) + 'mm';
+
+        this.drawPatientView(hits);
+        this.updateVA();
+    },
+
+    // ──── PATIENT VIEW ────
+    drawPatientView(hits) {
+        const cvs = document.getElementById('retina-canvas');
+        const ctx = cvs.getContext('2d');
+        const w = cvs.width, h = cvs.height;
+        ctx.filter = 'none'; ctx.globalAlpha = 1.0;
+
+        const res = this.getResidualError();
+        const eSph = res.sph, eCyl = res.cyl, eAxis = res.axis;
+
+        if (this.state.sceneMode === 'landscape') this.drawLandscape(ctx, w, h, eSph, eCyl, eAxis);
+        else if (this.state.sceneMode === 'reading') this.drawReading(ctx, w, h, eSph, eCyl, eAxis);
+        else this.drawNight(ctx, w, h, eSph, eCyl, eAxis);
+
+        // Apply neural compensation post-processing
+        if (this.state.brainMode) this.applyNeuralPostProcess(ctx, w, h);
+    },
+
+    applyNeuralPostProcess(ctx, w, h) {
+        const clarity = this.getNeuralClarity();
+        // Update clarity bar
+        document.getElementById('clarity-fill').style.width = clarity + '%';
+        document.getElementById('clarity-pct').innerText = clarity + '%';
+
+        if (clarity < 5) return;
+        // Unsharp mask: sharpen edges
+        const strength = clarity / 100 * 0.4;
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const data = imgData.data;
+        const copy = new Uint8ClampedArray(data);
+
+        // Simple edge enhancement: for each pixel, boost difference from neighbors
+        for (let y = 1; y < h - 1; y++) {
+            for (let x = 1; x < w - 1; x++) {
+                const idx = (y * w + x) * 4;
+                for (let c = 0; c < 3; c++) {
+                    const center = copy[idx + c];
+                    const avg = (
+                        copy[((y-1)*w+x)*4+c] + copy[((y+1)*w+x)*4+c] +
+                        copy[(y*w+x-1)*4+c] + copy[(y*w+x+1)*4+c]
+                    ) / 4;
+                    const edge = center - avg;
+                    data[idx + c] = Math.max(0, Math.min(255, center + edge * strength * 3));
+                }
+            }
+        }
+        ctx.putImageData(imgData, 0, 0);
+
+        // Slight contrast boost
+        ctx.save();
+        ctx.filter = `contrast(${1 + strength * 0.4}) saturate(${1 + strength * 0.15})`;
+        ctx.globalAlpha = 0.6;
+        ctx.drawImage(ctx.canvas, 0, 0);
+        ctx.restore();
+        ctx.filter = 'none'; ctx.globalAlpha = 1;
+    },
+
+    getBrainFilter() {
+        if (!this.state.brainMode) return '';
+        const clarity = this.getNeuralClarity() / 100;
+        return `contrast(${1 + clarity * 0.25}) saturate(${1 + clarity * 0.1})`;
+    },
+
+    getAstigOffset(cyl, axis) {
+        if (Math.abs(cyl) < 0.25) return { dx: 0, dy: 0 };
+        const axRad = axis * Math.PI / 180;
+        const mag = Math.abs(cyl) * 2;
+        return { dx: Math.cos(axRad) * mag, dy: Math.sin(axRad) * mag };
+    },
+
+    applyAstigGhost(ctx, drawFn, cyl, axis) {
+        if (Math.abs(cyl) < 0.25) { drawFn(0, 0); return; }
+        const axRad = axis * Math.PI / 180;
+        const mag = Math.abs(cyl);
+        const steps = Math.min(8, Math.ceil(mag * 3));
+        for (let i = steps; i >= 1; i--) {
+            const pct = i / steps;
+            const dx = Math.cos(axRad) * mag * pct * 3;
+            const dy = Math.sin(axRad) * mag * pct * 3;
+            ctx.globalAlpha = 0.12 * (1 - pct);
+            drawFn(dx, dy);
+        }
+        ctx.globalAlpha = 1.0;
+        drawFn(0, 0);
+    },
+
+    // ──── LANDSCAPE SCENE ────
+    drawLandscape(ctx, w, h, sph, cyl, axis) {
+        const bf = this.getBrainFilter();
+        const hY = h * 0.50;
+
+        // Sky gradient
+        ctx.save(); ctx.filter = `blur(${this.getBlurPx(0)}px) ${bf}`;
+        const sky = ctx.createLinearGradient(0, 0, 0, hY);
+        sky.addColorStop(0, '#0f2744'); sky.addColorStop(0.3, '#2a6b9e');
+        sky.addColorStop(0.55, '#5ba3cc'); sky.addColorStop(0.8, '#8ec8e5');
+        sky.addColorStop(1, '#c5dfe8');
+        ctx.fillStyle = sky; ctx.fillRect(0, 0, w, hY + 15);
+        ctx.restore();
+
+        // Clouds
+        ctx.save(); ctx.filter = `blur(${this.getBlurPx(0) + 2}px) ${bf}`;
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.beginPath(); ctx.ellipse(w*0.3, h*0.13, 50, 14, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(w*0.55, h*0.09, 35, 10, 0.2, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(w*0.8, h*0.16, 42, 12, -0.1, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+
+        // Sun
+        ctx.save(); ctx.filter = `blur(${this.getBlurPx(0) + 1}px) ${bf}`;
+        const sX = w * 0.82, sY = h * 0.16;
+        const sunG = ctx.createRadialGradient(sX, sY, 0, sX, sY, 55);
+        sunG.addColorStop(0, '#fff8e1'); sunG.addColorStop(0.25, '#ffecb3');
+        sunG.addColorStop(0.6, 'rgba(255,236,179,0.25)'); sunG.addColorStop(1, 'rgba(255,236,179,0)');
+        ctx.fillStyle = sunG; ctx.fillRect(sX-55, sY-55, 110, 110);
+        ctx.fillStyle = '#fffde7'; ctx.beginPath(); ctx.arc(sX, sY, 14, 0, Math.PI*2); ctx.fill();
+        // Starburst from astigmatism
+        if (Math.abs(cyl) > 0.25) {
+            const ar = axis * Math.PI / 180, len = Math.abs(cyl) * 22;
+            ctx.strokeStyle = 'rgba(255,253,231,0.5)'; ctx.lineWidth = Math.abs(cyl) * 2.5;
+            ctx.beginPath();
+            ctx.moveTo(sX - Math.cos(ar)*len, sY - Math.sin(ar)*len);
+            ctx.lineTo(sX + Math.cos(ar)*len, sY + Math.sin(ar)*len); ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,253,231,0.2)'; ctx.lineWidth = Math.abs(cyl);
+            ctx.beginPath();
+            ctx.moveTo(sX - Math.cos(ar+Math.PI/2)*len*0.4, sY - Math.sin(ar+Math.PI/2)*len*0.4);
+            ctx.lineTo(sX + Math.cos(ar+Math.PI/2)*len*0.4, sY + Math.sin(ar+Math.PI/2)*len*0.4); ctx.stroke();
+        }
+        ctx.restore();
+
+        // Far mountains (50m, 0.02D)
+        ctx.save(); ctx.filter = `blur(${this.getBlurPx(0.02)}px) ${bf}`;
+        ctx.fillStyle = '#5a7a9d';
+        ctx.beginPath(); ctx.moveTo(-20, hY);
+        [[0.1,-75],[0.22,-110],[0.35,-60],[0.48,-130],[0.6,-85],[0.72,-100],[0.85,-115],[1.05,0]].forEach(([px,py]) => ctx.lineTo(w*px, hY+py));
+        ctx.lineTo(w+20, hY); ctx.fill();
+        ctx.fillStyle = '#7a9ab5';
+        ctx.beginPath(); ctx.moveTo(-20, hY);
+        [[0.06,-35],[0.18,-60],[0.32,-45],[0.46,-75],[0.58,-50],[0.7,-60],[0.84,-55],[1.05,0]].forEach(([px,py]) => ctx.lineTo(w*px, hY+py));
+        ctx.lineTo(w+20, hY); ctx.fill();
+        ctx.restore();
+
+        // Ground
+        ctx.save(); ctx.filter = `blur(${this.getBlurPx(0.15)}px) ${bf}`;
+        const gG = ctx.createLinearGradient(0, hY, 0, h);
+        gG.addColorStop(0, '#5a7a3a'); gG.addColorStop(0.4, '#4a6b2f'); gG.addColorStop(1, '#3d5a28');
+        ctx.fillStyle = gG; ctx.fillRect(0, hY, w, h - hY);
+        // Grass texture lines
+        ctx.strokeStyle = 'rgba(70,110,40,0.3)'; ctx.lineWidth = 1;
+        for (let i = 0; i < 20; i++) {
+            const gy = hY + 10 + i * ((h - hY) / 20);
+            ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy + (Math.random()-0.5)*8); ctx.stroke();
+        }
+        ctx.restore();
+
+        // Dirt path (mid ~5m, 0.2D)
+        ctx.save(); ctx.filter = `blur(${this.getBlurPx(0.2)}px) ${bf}`;
+        ctx.fillStyle = '#8b7355';
+        ctx.beginPath();
+        ctx.moveTo(w*0.42, hY+5); ctx.lineTo(w*0.58, hY+5);
+        ctx.lineTo(w*0.75, h); ctx.lineTo(w*0.25, h); ctx.fill();
+        ctx.strokeStyle = '#75633f'; ctx.lineWidth = 1;
+        ctx.setLineDash([3, 8]);
+        ctx.beginPath(); ctx.moveTo(w*0.5, hY+8); ctx.lineTo(w*0.5, h); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        // Fence posts (6m, 0.17D)
+        ctx.save(); ctx.filter = `blur(${this.getBlurPx(0.17)}px) ${bf}`;
+        ctx.fillStyle = '#5c4a3a';
+        for (let i = 0; i < 7; i++) { ctx.fillRect(25 + i*52, hY+5, 3, 32); }
+        ctx.strokeStyle = '#5c4a3a'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(25, hY+14); ctx.lineTo(25+6*52, hY+14); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(25, hY+28); ctx.lineTo(25+6*52, hY+28); ctx.stroke();
+        ctx.restore();
+
+        // Road sign (10m, 0.1D)
+        ctx.save(); ctx.filter = `blur(${this.getBlurPx(0.1)}px) ${bf}`;
+        const sgX = w*0.35;
+        ctx.fillStyle = '#666'; ctx.fillRect(sgX, hY-8, 3, 45);
+        ctx.fillStyle = '#1a6832'; this.roundRect(ctx, sgX-20, hY-25, 44, 20, 3); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 7px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('EXIT 4', sgX+2, hY-12);
+        ctx.restore();
+
+        // Tree (3m, 0.33D)
+        ctx.save(); ctx.filter = `blur(${this.getBlurPx(0.33)}px) ${bf}`;
+        const tX = w*0.72;
+        ctx.fillStyle = '#4a3828'; ctx.fillRect(tX-4, hY-25, 10, 68);
+        ctx.fillStyle = '#2d6b1e';
+        ctx.beginPath(); ctx.ellipse(tX+2, hY-38, 32, 42, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#3a8528';
+        ctx.beginPath(); ctx.ellipse(tX-6, hY-28, 20, 28, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#247518';
+        ctx.beginPath(); ctx.ellipse(tX+12, hY-45, 18, 22, 0, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+
+        // Wildflowers foreground (0.5m, 2D)
+        ctx.save(); ctx.filter = `blur(${this.getBlurPx(2.0)}px) ${bf}`;
+        const colors = ['#e74c3c','#f39c12','#9b59b6','#3498db','#e67e22'];
+        for (let i = 0; i < 12; i++) {
+            ctx.fillStyle = colors[i % colors.length];
+            const fx = 15 + i * 32, fy = h - 20 - Math.random() * 30;
+            ctx.beginPath(); ctx.arc(fx, fy, 4 + Math.random()*3, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#2d6b1e';
+            ctx.fillRect(fx-0.5, fy+3, 1.5, 12);
+        }
+        ctx.restore();
+
+        ctx.filter = 'none'; ctx.globalAlpha = 1;
+    },
+
+    // ──── READING SCENE ────
+    drawReading(ctx, w, h, sph, cyl, axis) {
+        const bf = this.getBrainFilter();
+        // Background room (3m, 0.33D)
+        ctx.save(); ctx.filter = `blur(${this.getBlurPx(0.33)}px) ${bf}`;
+        const bgG = ctx.createLinearGradient(0, 0, 0, h);
+        bgG.addColorStop(0, '#3a3530'); bgG.addColorStop(1, '#2a2520');
+        ctx.fillStyle = bgG; ctx.fillRect(0, 0, w, h);
+        // Shelf
+        ctx.fillStyle = '#5a4a38'; ctx.fillRect(20, 30, w-40, 6);
+        ctx.fillStyle = '#4a6b2f'; ctx.fillRect(35, 8, 18, 22); // plant
+        ctx.fillStyle = '#8b4513'; ctx.fillRect(70, 10, 8, 20); // book
+        ctx.fillStyle = '#c0392b'; ctx.fillRect(82, 12, 7, 18); // book
+        ctx.fillStyle = '#2980b9'; ctx.fillRect(93, 14, 6, 16); // book
+        // Window light
+        ctx.fillStyle = 'rgba(200,220,240,0.08)';
+        ctx.fillRect(w-70, 15, 50, 60);
+        ctx.restore();
+
+        // Reading card at 40cm = 2.5D
+        const cardBlur = this.getBlurPx(2.5);
+        const drawCard = (dx, dy) => {
+            ctx.save(); ctx.translate(dx, dy);
+            ctx.filter = `blur(${cardBlur}px) ${bf}`;
+            // Card
+            ctx.fillStyle = '#faf8f2';
+            this.roundRect(ctx, 18, 52, w-36, h-80, 4); ctx.fill();
+            ctx.strokeStyle = '#d5d0c8'; ctx.lineWidth = 1;
+            this.roundRect(ctx, 18, 52, w-36, h-80, 4); ctx.stroke();
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            this.roundRect(ctx, 21, 55, w-36, h-80, 4); ctx.fill();
+            ctx.fillStyle = '#faf8f2';
+            this.roundRect(ctx, 18, 52, w-36, h-80, 4); ctx.fill();
+
+            // Title
+            ctx.fillStyle = '#222'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('NEAR VISION TEST CARD', w/2, 76);
+            ctx.strokeStyle = '#ccc'; ctx.lineWidth = 0.5;
+            ctx.beginPath(); ctx.moveTo(32, 82); ctx.lineTo(w-32, 82); ctx.stroke();
+
+            // Jaeger lines
+            const lines = [
+                { size: 13, text: 'The quick brown fox jumps over the lazy dog', label: 'J1' },
+                { size: 11, text: 'Pack my box with five dozen liquor jugs', label: 'J2' },
+                { size: 9, text: 'How vexingly quick daft zebras jump over fence', label: 'J3' },
+                { size: 7.5, text: 'Sphinx of black quartz judge my vow nightly and swiftly', label: 'J5' },
+                { size: 6, text: 'The five boxing wizards jump quickly at dawn for breakfast every day', label: 'J7' },
+                { size: 4.5, text: 'Amazingly few discotheques provide jukeboxes for weary travelers who need rest', label: 'J10' },
+            ];
+            let yP = 100;
+            lines.forEach(l => {
+                ctx.fillStyle = '#333'; ctx.font = `${l.size}px Georgia, serif`; ctx.textAlign = 'left';
+                ctx.fillText(l.text, 32, yP, w-85);
+                ctx.fillStyle = '#aaa'; ctx.font = '6px sans-serif'; ctx.textAlign = 'right';
+                ctx.fillText(l.label, w-24, yP);
+                yP += l.size + 12;
+            });
+
+            // Snellen optotypes
+            ctx.fillStyle = '#222'; ctx.font = 'bold 20px monospace'; ctx.textAlign = 'center';
+            ctx.fillText('E  F  P   T  O  Z', w/2, yP + 12);
+            ctx.font = 'bold 14px monospace';
+            ctx.fillText('L  P  E  D   P  E  C  F  D', w/2, yP + 32);
+            ctx.font = 'bold 10px monospace';
+            ctx.fillText('E D F C Z P  F E L O P Z D', w/2, yP + 48);
+            ctx.font = 'bold 7px monospace';
+            ctx.fillText('P E Z O L C F T D', w/2, yP + 60);
+            ctx.font = 'bold 5px monospace';
+            ctx.fillText('F E L O P Z D C T E P Z O', w/2, yP + 70);
+            ctx.restore();
+        };
+        this.applyAstigGhost(ctx, drawCard, cyl, axis);
+        ctx.filter = 'none'; ctx.globalAlpha = 1;
+    },
+
+    // ──── NIGHT DRIVING SCENE ────
+    drawNight(ctx, w, h, sph, cyl, axis) {
+        // Dark sky
+        const skyG = ctx.createLinearGradient(0, 0, 0, h * 0.4);
+        skyG.addColorStop(0, '#020208'); skyG.addColorStop(1, '#0a0a14');
+        ctx.fillStyle = skyG; ctx.fillRect(0, 0, w, h);
+        const bf = this.getBrainFilter();
+        const hY = h * 0.40;
+        const pupilFactor = this.getEffectivePupil() / 5.0;
+
+        // Stars
+        ctx.save(); ctx.filter = `blur(${this.getBlurPx(0) * 0.3}px)`;
+        const seeds = [0.12,0.34,0.56,0.78,0.91,0.23,0.45,0.67,0.89,0.15,0.38,0.62,0.84,0.07,0.52,0.27,0.73,0.41];
+        seeds.forEach((s, i) => {
+            ctx.fillStyle = '#fff';
+            ctx.globalAlpha = 0.2 + s * 0.4;
+            const sx = s * w, sy = (seeds[(i+5) % seeds.length]) * hY * 0.85;
+            ctx.beginPath(); ctx.arc(sx, sy, 0.8 + s * 0.5, 0, Math.PI*2); ctx.fill();
+        });
+        ctx.globalAlpha = 1; ctx.restore();
+
+        // Treeline silhouette
+        ctx.save(); ctx.filter = `blur(${this.getBlurPx(0.01)}px)`;
+        ctx.fillStyle = '#0a0a12';
+        ctx.beginPath(); ctx.moveTo(0, hY);
+        for (let x = 0; x <= w; x += 8) {
+            const treeH = 10 + Math.sin(x * 0.05) * 8 + Math.sin(x * 0.12) * 5 + Math.random() * 3;
+            ctx.lineTo(x, hY - treeH);
+        }
+        ctx.lineTo(w, hY); ctx.fill();
+        ctx.restore();
+
+        // Road
+        ctx.save(); ctx.filter = `blur(${this.getBlurPx(0.05)}px)`;
+        ctx.fillStyle = '#151518';
+        ctx.beginPath();
+        ctx.moveTo(w*0.36, hY); ctx.lineTo(w*0.64, hY);
+        ctx.lineTo(w*0.95, h); ctx.lineTo(w*0.05, h); ctx.fill();
+        // Road edges
+        ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(w*0.36, hY); ctx.lineTo(w*0.05, h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(w*0.64, hY); ctx.lineTo(w*0.95, h); ctx.stroke();
+        // White edge lines
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(w*0.37, hY+2); ctx.lineTo(w*0.08, h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(w*0.63, hY+2); ctx.lineTo(w*0.92, h); ctx.stroke();
+        // Center dashes
+        ctx.strokeStyle = '#c8b020'; ctx.lineWidth = 2; ctx.setLineDash([12, 20]);
+        ctx.beginPath(); ctx.moveTo(w*0.5, hY+5); ctx.lineTo(w*0.5, h); ctx.stroke();
+        ctx.setLineDash([]);
+        // Guardrail reflectors
+        ctx.fillStyle = '#ff8800';
+        for (let i = 0; i < 5; i++) {
+            const gy = hY + 20 + i * 40;
+            const gx1 = w * (0.37 - i * 0.06);
+            const gx2 = w * (0.63 + i * 0.06);
+            ctx.globalAlpha = 0.4 - i * 0.07;
+            ctx.fillRect(gx1, gy, 3, 2);
+            ctx.fillRect(gx2, gy, 3, 2);
+        }
+        ctx.globalAlpha = 1;
+        ctx.restore();
+
+        // Dashboard glow
+        ctx.save();
+        const dashG = ctx.createLinearGradient(0, h-60, 0, h);
+        dashG.addColorStop(0, 'rgba(0,10,20,0)');
+        dashG.addColorStop(0.5, 'rgba(5,15,25,0.4)');
+        dashG.addColorStop(1, 'rgba(10,20,35,0.8)');
+        ctx.fillStyle = dashG; ctx.fillRect(0, h-60, w, 60);
+        // Speed
+        ctx.filter = `blur(${this.getBlurPx(3)}px)`;
+        ctx.fillStyle = 'rgba(0,200,100,0.3)'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+        ctx.fillText('65 MPH', w*0.5, h-12);
+        ctx.restore();
+
+        // ── Light rendering with halos ──
+        const drawLight = (x, y, color, r, vergence, showHalo) => {
+            const lb = this.getBlurPx(vergence, 45);
+            const sz = r + lb * 1.8 * pupilFactor;
+            ctx.save(); ctx.globalCompositeOperation = 'screen';
+
+            // Veiling glare (overall scatter)
+            if (lb > 3) {
+                ctx.filter = `blur(${lb * 2}px)`;
+                ctx.globalAlpha = Math.min(0.15, lb * 0.01 * pupilFactor);
+                ctx.fillStyle = color;
+                ctx.fillRect(0, 0, w, h);
+            }
+
+            // Outer glow
+            let fStr = `blur(${Math.max(1, lb)}px)`;
+            if (this.state.brainMode) fStr += ` brightness(${1 + this.getNeuralClarity()/100 * 0.15})`;
+            ctx.filter = fStr; ctx.globalAlpha = 1;
+            const g = ctx.createRadialGradient(x, y, 0, x, y, sz * 2.5);
+            g.addColorStop(0, color);
+            g.addColorStop(0.3, color.replace(')', ',0.4)').replace('rgb', 'rgba'));
+            g.addColorStop(0.7, color.replace(')', ',0.1)').replace('rgb', 'rgba'));
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g;
+            ctx.fillRect(x - sz*2.5, y - sz*2.5, sz*5, sz*5);
+
+            // Concentric halo rings (from pupil diffraction)
+            if (showHalo && lb > 2) {
+                ctx.filter = `blur(${lb * 0.6}px)`;
+                const haloR = sz * 1.5;
+                ctx.strokeStyle = color.replace(')', ',0.15)').replace('rgb', 'rgba');
+                ctx.lineWidth = 1.5 * pupilFactor;
+                for (let ring = 1; ring <= 3; ring++) {
+                    ctx.globalAlpha = 0.12 / ring;
+                    ctx.beginPath(); ctx.arc(x, y, haloR * ring * 0.6, 0, Math.PI*2); ctx.stroke();
+                }
+                // Chromatic halo
+                ctx.globalAlpha = 0.06;
+                ctx.strokeStyle = 'rgba(100,150,255,0.3)'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(x, y, haloR * 1.1, 0, Math.PI*2); ctx.stroke();
+                ctx.strokeStyle = 'rgba(255,200,100,0.2)'; ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.arc(x, y, haloR * 0.7, 0, Math.PI*2); ctx.stroke();
+            }
+
+            // Core
+            ctx.filter = `blur(${Math.max(0.3, lb * 0.2)}px)`;
+            ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.9;
+            ctx.beginPath(); ctx.arc(x, y, r * 0.6, 0, Math.PI*2); ctx.fill();
+            ctx.globalAlpha = 1;
+
+            // Astigmatic starburst
+            if (Math.abs(cyl) > 0.25) {
+                const ar = axis * Math.PI / 180;
+                const sLen = Math.abs(cyl) * 25 * pupilFactor + sz * 0.5;
+                const thick = Math.max(1, 2 + Math.abs(cyl));
+                ctx.filter = `blur(${lb * 0.4}px)`;
+                // Multiple spikes for realism
+                for (let spike = 0; spike < 3; spike++) {
+                    const sAngle = ar + spike * Math.PI / 3;
+                    const sAlpha = spike === 0 ? 0.4 : 0.12;
+                    const sThick = spike === 0 ? thick : thick * 0.5;
+                    ctx.save();
+                    ctx.translate(x, y); ctx.rotate(sAngle);
+                    const sg = ctx.createLinearGradient(-sLen, 0, sLen, 0);
+                    sg.addColorStop(0, 'rgba(0,0,0,0)');
+                    sg.addColorStop(0.3, color.replace(')', `,${sAlpha})`).replace('rgb', 'rgba'));
+                    sg.addColorStop(0.5, color);
+                    sg.addColorStop(0.7, color.replace(')', `,${sAlpha})`).replace('rgb', 'rgba'));
+                    sg.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = sg;
+                    ctx.globalAlpha = spike === 0 ? 1 : 0.3;
+                    ctx.fillRect(-sLen, -sThick/2, sLen*2, sThick);
+                    ctx.restore();
+                }
+            }
+            ctx.restore();
+        };
+
+        // Street lamp
+        drawLight(w*0.2, h*0.25, 'rgb(180,210,255)', 5, 0, true);
+        ctx.save(); ctx.filter = `blur(${this.getBlurPx(0.02)}px)`;
+        ctx.fillStyle = '#222'; ctx.fillRect(w*0.195, h*0.27, 2.5, hY - h*0.27 + 15);
+        ctx.restore();
+
+        // Oncoming headlights (far, ~30m = 0.033D)
+        drawLight(w*0.43, hY+12, 'rgb(255,250,215)', 4, 0.033, true);
+        drawLight(w*0.48, hY+12, 'rgb(255,250,215)', 4, 0.033, true);
+
+        // Oncoming headlights (closer, ~15m = 0.067D)
+        drawLight(w*0.38, hY+40, 'rgb(255,248,200)', 6, 0.067, true);
+        drawLight(w*0.45, hY+40, 'rgb(255,248,200)', 6, 0.067, true);
+
+        // Red tail lights ahead (~8m = 0.125D)
+        drawLight(w*0.52, h*0.68, 'rgb(255,30,30)', 4, 0.125, true);
+        drawLight(w*0.62, h*0.68, 'rgb(255,30,30)', 4, 0.125, true);
+
+        // Traffic light
+        drawLight(w*0.72, hY-8, 'rgb(40,255,40)', 3, 0.01, true);
+
+        // Street lamp far
+        drawLight(w*0.65, hY-5, 'rgb(255,200,120)', 2, 0.005, false);
+
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.filter = 'none'; ctx.globalAlpha = 1;
     },
 
     // ──── VISUAL ACUITY ────
     updateVA() {
         const res = this.getResidualError();
         const se = res.sph + res.cyl / 2;
-
         document.getElementById('val-se').innerText = (se >= 0 ? '+' : '') + se.toFixed(2);
 
-        // Approximate Snellen from spherical equivalent (Holladay)
-        // logMAR ≈ 0.1 + |SE| * 0.4 (rough clinical approximation)
-        const absSE = Math.abs(se);
-        const absCyl = Math.abs(res.cyl);
+        const absSE = Math.abs(se), absCyl = Math.abs(res.cyl);
         const defocus = absSE + absCyl * 0.5;
 
         let snellenDenom;
@@ -734,8 +1636,7 @@ const sim = {
 
         const ring = document.getElementById('va-ring');
         const pill = document.getElementById('pill-va');
-        ring.className = 'va-ring';
-        pill.className = 'readout-pill';
+        ring.className = 'va-ring'; pill.className = 'readout-pill';
 
         let desc = '';
         if (snellenDenom <= 25) {
@@ -750,454 +1651,31 @@ const sim = {
         }
         document.getElementById('va-description').innerText = desc;
 
-        // Update SE pill color
         const sePill = document.getElementById('pill-sph-eq');
         sePill.className = 'readout-pill';
         if (Math.abs(se) < 0.5) sePill.classList.add('corrected');
     },
 
-    // ──── RAY TRACING ────
-    calculateRays() {
-        const Z_SRC = -22, Z_LENS = -9, Z_CORNEA = 0;
-        const Z_RETINA = this.state.eye.axialLength;
-        const K = this.K;
-        const hits = [];
-
-        this.objects.rays.forEach(ray => {
-            const ox = ray.userData.ox, oy = ray.userData.oy;
-            const pos = ray.geometry.attributes.position.array;
-
-            // Source -> Lens position
-            pos[0] = ox; pos[1] = oy; pos[2] = Z_SRC;
-            pos[3] = ox; pos[4] = oy; pos[5] = Z_LENS;
-
-            let slopeX = 0, slopeY = 0;
-
-            // Refraction through corrective lens
-            if (this.state.lens.active) {
-                const angL = Math.atan2(oy, ox);
-                const lAxisRad = this.state.lens.axis * (Math.PI / 180);
-                const lCylP = this.state.lens.cyl * Math.pow(Math.sin(angL - lAxisRad), 2);
-                const lTotalP = this.state.lens.sph + lCylP;
-                slopeX -= ox * lTotalP * K;
-                slopeY -= oy * lTotalP * K;
-            }
-
-            // Propagate to cornea
-            const d1 = Z_CORNEA - Z_LENS;
-            const cx = ox + slopeX * d1;
-            const cy = oy + slopeY * d1;
-            pos[6] = cx; pos[7] = cy; pos[8] = Z_CORNEA;
-
-            // Refraction through eye (cornea + crystalline lens modeled as thin lens)
-            const angC = Math.atan2(cy, cx);
-            const patAxisRad = this.state.rx.axis * (Math.PI / 180);
-            // The eye's refractive error means total eye power differs from ideal
-            const cylComponent = -this.state.rx.cyl * Math.pow(Math.sin(angC - patAxisRad), 2);
-            const eyeError = -this.state.rx.sph + cylComponent;
-            const totalEyeP = this.BASE_POWER + eyeError;
-
-            slopeX -= cx * totalEyeP * K;
-            slopeY -= cy * totalEyeP * K;
-
-            // Propagate to retina
-            const d2 = Z_RETINA - Z_CORNEA;
-            const rx = cx + slopeX * d2;
-            const ry = cy + slopeY * d2;
-            pos[9] = rx; pos[10] = ry; pos[11] = Z_RETINA;
-
-            ray.geometry.attributes.position.needsUpdate = true;
-
-            // Color ray by convergence quality
-            const dist = Math.sqrt(rx * rx + ry * ry);
-            if (dist < 0.5) {
-                ray.material.color.setHex(0x22c55e);
-                ray.material.opacity = 0.7;
-            } else if (dist < 2) {
-                ray.material.color.setHex(0xf59e0b);
-                ray.material.opacity = 0.55;
-            } else {
-                ray.material.color.setHex(0x3b82f6);
-                ray.material.opacity = 0.45;
-            }
-
-            hits.push({ x: rx, y: ry });
-        });
-
-        this.drawPatientView(hits);
-        this.updateVA();
-    },
-
-    // ──── PATIENT VIEW ────
-    drawPatientView(hits) {
-        const cvs = document.getElementById('retina-canvas');
-        const ctx = cvs.getContext('2d');
-        const w = cvs.width, h = cvs.height;
-        ctx.filter = 'none'; ctx.globalAlpha = 1.0;
-
-        const res = this.getResidualError();
-        const effectiveSph = res.sph;
-        const effectiveCyl = res.cyl;
-
-        if (this.state.sceneMode === 'landscape') {
-            this.drawLandscape(ctx, w, h, effectiveSph, effectiveCyl, res.axis);
-        } else if (this.state.sceneMode === 'reading') {
-            this.drawReading(ctx, w, h, effectiveSph, effectiveCyl, res.axis);
-        } else {
-            this.drawNight(ctx, w, h, effectiveSph, effectiveCyl, res.axis);
-        }
-    },
-
-    // Astigmatic jitter offsets from ray spread
-    getAstigOffset(cyl, axis) {
-        if (Math.abs(cyl) < 0.25) return { dx: 0, dy: 0 };
-        const axRad = axis * Math.PI / 180;
-        const mag = Math.abs(cyl) * 1.5;
-        return { dx: Math.cos(axRad) * mag, dy: Math.sin(axRad) * mag };
-    },
-
-    applyAstigGhost(ctx, drawFn, cyl, axis, w, h) {
-        if (Math.abs(cyl) < 0.25) { drawFn(0, 0); return; }
-        const axRad = axis * Math.PI / 180;
-        const mag = Math.abs(cyl);
-        const steps = Math.min(6, Math.ceil(mag * 3));
-        for (let i = steps; i >= 1; i--) {
-            const pct = i / steps;
-            const dx = Math.cos(axRad) * mag * pct * 2.5;
-            const dy = Math.sin(axRad) * mag * pct * 2.5;
-            ctx.globalAlpha = 0.15 * (1 - pct);
-            drawFn(dx, dy);
-        }
-        ctx.globalAlpha = 1.0;
-        drawFn(0, 0);
-    },
-
-    // ──── LANDSCAPE SCENE ────
-    drawLandscape(ctx, w, h, sph, cyl, axis) {
-        const brainBoost = this.state.brainMode ? 'contrast(1.3) saturate(1.15)' : '';
-        const horizonY = h * 0.52;
-
-        // Sky
-        const blurSky = this.getBlurPx(0);
-        ctx.save();
-        ctx.filter = `blur(${blurSky}px) ${brainBoost}`;
-        const skyG = ctx.createLinearGradient(0, 0, 0, horizonY);
-        skyG.addColorStop(0, '#1e3a5f');
-        skyG.addColorStop(0.4, '#4a90c4');
-        skyG.addColorStop(0.7, '#7fb5d8');
-        skyG.addColorStop(1, '#b8d4e8');
-        ctx.fillStyle = skyG;
-        ctx.fillRect(0, 0, w, horizonY + 10);
-        ctx.restore();
-
-        // Sun
-        ctx.save();
-        ctx.filter = `blur(${blurSky + 1}px) ${brainBoost}`;
-        const sunX = w * 0.78, sunY = h * 0.18;
-        const sunG = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 60);
-        sunG.addColorStop(0, '#fff8e1');
-        sunG.addColorStop(0.3, '#ffecb3');
-        sunG.addColorStop(0.7, 'rgba(255,236,179,0.3)');
-        sunG.addColorStop(1, 'rgba(255,236,179,0)');
-        ctx.fillStyle = sunG;
-        ctx.fillRect(sunX - 60, sunY - 60, 120, 120);
-        ctx.fillStyle = '#fffde7'; ctx.beginPath(); ctx.arc(sunX, sunY, 18, 0, Math.PI * 2); ctx.fill();
-
-        // Starburst on sun from astigmatism
-        if (Math.abs(cyl) > 0.25) {
-            const axRad = axis * Math.PI / 180;
-            const len = Math.abs(cyl) * 25;
-            ctx.strokeStyle = 'rgba(255,253,231,0.5)'; ctx.lineWidth = Math.abs(cyl) * 2;
-            ctx.beginPath();
-            ctx.moveTo(sunX - Math.cos(axRad) * len, sunY - Math.sin(axRad) * len);
-            ctx.lineTo(sunX + Math.cos(axRad) * len, sunY + Math.sin(axRad) * len);
-            ctx.stroke();
-            // Perpendicular streak (weaker)
-            ctx.strokeStyle = 'rgba(255,253,231,0.2)'; ctx.lineWidth = Math.abs(cyl);
-            ctx.beginPath();
-            ctx.moveTo(sunX - Math.cos(axRad + Math.PI/2) * len * 0.4, sunY - Math.sin(axRad + Math.PI/2) * len * 0.4);
-            ctx.lineTo(sunX + Math.cos(axRad + Math.PI/2) * len * 0.4, sunY + Math.sin(axRad + Math.PI/2) * len * 0.4);
-            ctx.stroke();
-        }
-        ctx.restore();
-
-        // Distant mountains
-        ctx.save();
-        ctx.filter = `blur(${this.getBlurPx(0.02)}px) ${brainBoost}`;
-        ctx.fillStyle = '#6b8aad';
-        ctx.beginPath(); ctx.moveTo(-20, horizonY);
-        const peaks = [[0.12, -80], [0.28, -120], [0.42, -60], [0.58, -140], [0.72, -90], [0.88, -110], [1.05, 0]];
-        peaks.forEach(([px, py]) => ctx.lineTo(w * px, horizonY + py));
-        ctx.lineTo(w + 20, horizonY); ctx.fill();
-
-        ctx.fillStyle = '#8aa4be';
-        ctx.beginPath(); ctx.moveTo(-20, horizonY);
-        const peaks2 = [[0.08, -40], [0.22, -70], [0.38, -50], [0.52, -85], [0.68, -55], [0.82, -65], [1.05, 0]];
-        peaks2.forEach(([px, py]) => ctx.lineTo(w * px, horizonY + py));
-        ctx.lineTo(w + 20, horizonY); ctx.fill();
-        ctx.restore();
-
-        // Ground
-        ctx.save();
-        ctx.filter = `blur(${this.getBlurPx(0.15)}px) ${brainBoost}`;
-        const gG = ctx.createLinearGradient(0, horizonY, 0, h);
-        gG.addColorStop(0, '#5a7a3a'); gG.addColorStop(0.5, '#4a6b2f'); gG.addColorStop(1, '#3d5a28');
-        ctx.fillStyle = gG; ctx.fillRect(0, horizonY, w, h - horizonY);
-        ctx.restore();
-
-        // Fence posts (mid distance ~6m, vergence ~0.17D)
-        const blurFence = this.getBlurPx(0.17);
-        ctx.save();
-        ctx.filter = `blur(${blurFence}px) ${brainBoost}`;
-        ctx.fillStyle = '#5c4a3a';
-        for (let i = 0; i < 7; i++) {
-            const fx = 30 + i * 55;
-            ctx.fillRect(fx, horizonY + 5, 4, 35);
-        }
-        ctx.strokeStyle = '#5c4a3a'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(30, horizonY + 15); ctx.lineTo(30 + 6 * 55, horizonY + 15); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(30, horizonY + 30); ctx.lineTo(30 + 6 * 55, horizonY + 30); ctx.stroke();
-        ctx.restore();
-
-        // Tree (mid ~3m, vergence ~0.33D)
-        const blurTree = this.getBlurPx(0.33);
-        ctx.save();
-        ctx.filter = `blur(${blurTree}px) ${brainBoost}`;
-        const treeX = w * 0.7;
-        ctx.fillStyle = '#4a3828'; ctx.fillRect(treeX - 5, horizonY - 30, 12, 75);
-        ctx.fillStyle = '#2d6b1e';
-        ctx.beginPath(); ctx.ellipse(treeX + 1, horizonY - 40, 35, 45, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#3a8528';
-        ctx.beginPath(); ctx.ellipse(treeX - 8, horizonY - 30, 22, 30, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-
-        // Foreground bush (close ~0.4m, vergence ~2.5D)
-        const blurBush = this.getBlurPx(2.5);
-        ctx.save();
-        ctx.filter = `blur(${blurBush}px) ${brainBoost}`;
-        ctx.fillStyle = '#1a5c12';
-        ctx.beginPath();
-        ctx.ellipse(w * 0.15, h - 15, 55, 35, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#228B22';
-        ctx.beginPath();
-        ctx.ellipse(w * 0.2, h - 5, 45, 28, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-
-        // Road sign (distance ~10m, vergence ~0.1D)
-        const blurSign = this.getBlurPx(0.1);
-        ctx.save();
-        ctx.filter = `blur(${blurSign}px) ${brainBoost}`;
-        const signX = w * 0.38;
-        ctx.fillStyle = '#555'; ctx.fillRect(signX, horizonY - 10, 3, 50);
-        ctx.fillStyle = '#2266aa';
-        this.roundRect(ctx, signX - 18, horizonY - 28, 40, 22, 3);
-        ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.font = 'bold 7px sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText('EXIT 4', signX + 2, horizonY - 14);
-        ctx.restore();
-
-        ctx.filter = 'none'; ctx.globalAlpha = 1;
-    },
-
-    // ──── READING SCENE ────
-    drawReading(ctx, w, h, sph, cyl, axis) {
-        const brainBoost = this.state.brainMode;
-        // Snellen card at 40cm → vergence = 2.5D
-        const baseBlur = this.getBlurPx(2.5);
-        const astigBlur = Math.abs(cyl) * 1.2;
-
-        // Background
-        ctx.fillStyle = '#f5f2eb'; ctx.fillRect(0, 0, w, h);
-
-        const drawContent = (dx, dy) => {
-            ctx.save();
-            ctx.translate(dx, dy);
-
-            let filterStr = `blur(${baseBlur}px)`;
-            if (brainBoost) filterStr += ' contrast(1.8) saturate(0.9)';
-            ctx.filter = filterStr;
-
-            // Card background
-            ctx.fillStyle = '#fff';
-            this.roundRect(ctx, 15, 10, w - 30, h - 50, 4);
-            ctx.fill();
-            ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1;
-            this.roundRect(ctx, 15, 10, w - 30, h - 50, 4);
-            ctx.stroke();
-
-            // Title
-            ctx.fillStyle = '#222'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
-            ctx.fillText('NEAR VISION TEST CARD', w / 2, 38);
-
-            // Divider
-            ctx.strokeStyle = '#ccc'; ctx.lineWidth = 0.5;
-            ctx.beginPath(); ctx.moveTo(30, 46); ctx.lineTo(w - 30, 46); ctx.stroke();
-
-            // Lines at decreasing sizes (simulating J-notation)
-            const lines = [
-                { size: 14, text: 'The quick brown fox jumps over', label: 'J1' },
-                { size: 12, text: 'Pack my box with five dozen', label: 'J2' },
-                { size: 10, text: 'How vexingly quick daft zebras jump', label: 'J3' },
-                { size: 8, text: 'Sphinx of black quartz judge my vow nightly', label: 'J5' },
-                { size: 6.5, text: 'The five boxing wizards jump quickly at dawn for breakfast', label: 'J7' },
-                { size: 5, text: 'Amazingly few discotheques provide jukeboxes for weary travelers who need rest', label: 'J10' },
-            ];
-
-            let yPos = 68;
-            lines.forEach(line => {
-                ctx.fillStyle = '#333'; ctx.font = `${line.size}px serif`; ctx.textAlign = 'left';
-                ctx.fillText(line.text, 30, yPos, w - 80);
-                ctx.fillStyle = '#999'; ctx.font = '7px sans-serif'; ctx.textAlign = 'right';
-                ctx.fillText(line.label, w - 22, yPos);
-                yPos += line.size + 14;
-            });
-
-            // E chart optotypes at bottom
-            ctx.fillStyle = '#222'; ctx.font = 'bold 22px monospace'; ctx.textAlign = 'center';
-            ctx.fillText('E  F  P    T  O  Z', w / 2, yPos + 15);
-            ctx.font = 'bold 16px monospace';
-            ctx.fillText('L  P  E  D    P  E  C  F  D', w / 2, yPos + 40);
-            ctx.font = 'bold 11px monospace';
-            ctx.fillText('E  D  F  C  Z  P    F  E  L  O  P  Z  D', w / 2, yPos + 58);
-            ctx.font = 'bold 8px monospace';
-            ctx.fillText('P  E  Z  O  L  C  F  T  D', w / 2, yPos + 72);
-
-            ctx.restore();
-        };
-
-        this.applyAstigGhost(ctx, drawContent, cyl, axis, w, h);
-        ctx.filter = 'none'; ctx.globalAlpha = 1;
-    },
-
-    // ──── NIGHT SCENE ────
-    drawNight(ctx, w, h, sph, cyl, axis) {
-        ctx.fillStyle = '#040408'; ctx.fillRect(0, 0, w, h);
-        const brainBoost = this.state.brainMode;
-        const horizonY = h * 0.42;
-
-        // Stars
-        ctx.save();
-        const blurStar = this.getBlurPx(0);
-        ctx.filter = `blur(${blurStar * 0.3}px)`;
-        ctx.fillStyle = '#fff';
-        const starSeed = [0.12, 0.34, 0.56, 0.78, 0.91, 0.23, 0.45, 0.67, 0.89, 0.15, 0.38, 0.62, 0.84, 0.07, 0.52];
-        starSeed.forEach((s, i) => {
-            const sx = s * w;
-            const sy = (starSeed[(i + 5) % starSeed.length]) * horizonY * 0.8;
-            ctx.globalAlpha = 0.3 + s * 0.5;
-            ctx.beginPath(); ctx.arc(sx, sy, 1 + s, 0, Math.PI * 2); ctx.fill();
-        });
-        ctx.globalAlpha = 1; ctx.restore();
-
-        // Road
-        ctx.save();
-        const blurRoad = this.getBlurPx(0.05);
-        ctx.filter = `blur(${blurRoad}px)`;
-        ctx.fillStyle = '#1a1a20';
-        ctx.beginPath();
-        ctx.moveTo(w * 0.38, horizonY); ctx.lineTo(w * 0.62, horizonY);
-        ctx.lineTo(w * 0.95, h); ctx.lineTo(w * 0.05, h); ctx.fill();
-
-        // Road edges
-        ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(w * 0.38, horizonY); ctx.lineTo(w * 0.05, h); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(w * 0.62, horizonY); ctx.lineTo(w * 0.95, h); ctx.stroke();
-
-        // Center dashes
-        ctx.strokeStyle = '#c8b020'; ctx.lineWidth = 2; ctx.setLineDash([15, 25]);
-        ctx.beginPath(); ctx.moveTo(w * 0.5, horizonY + 5); ctx.lineTo(w * 0.5, h); ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
-
-        // Light rendering helper
-        const drawLight = (x, y, color, radius, vergence) => {
-            const lb = this.getBlurPx(vergence, 40);
-            const size = radius + lb * 1.5;
-            ctx.save();
-            ctx.globalCompositeOperation = 'screen';
-
-            // Glow
-            let fStr = `blur(${Math.max(1, lb)}px)`;
-            if (brainBoost) fStr += ' brightness(1.2)';
-            ctx.filter = fStr;
-            const g = ctx.createRadialGradient(x, y, 0, x, y, size * 2);
-            g.addColorStop(0, color);
-            g.addColorStop(0.4, color.replace(')', ',0.4)').replace('rgb', 'rgba'));
-            g.addColorStop(1, 'rgba(0,0,0,0)');
-            ctx.fillStyle = g;
-            ctx.fillRect(x - size * 2, y - size * 2, size * 4, size * 4);
-
-            // Core
-            ctx.filter = `blur(${Math.max(0.5, lb * 0.3)}px)`;
-            ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.9;
-            ctx.beginPath(); ctx.arc(x, y, radius * 0.6, 0, Math.PI * 2); ctx.fill();
-            ctx.globalAlpha = 1;
-
-            // Astigmatic starburst
-            if (Math.abs(cyl) > 0.25) {
-                const axRad = axis * Math.PI / 180;
-                const len = Math.abs(cyl) * 30 + size;
-                const thick = Math.max(1, 3);
-
-                ctx.filter = `blur(${lb * 0.5}px)`;
-                // Primary streak (along cyl axis)
-                const sg = ctx.createLinearGradient(
-                    x - Math.cos(axRad) * len, y - Math.sin(axRad) * len,
-                    x + Math.cos(axRad) * len, y + Math.sin(axRad) * len
-                );
-                sg.addColorStop(0, 'rgba(0,0,0,0)');
-                sg.addColorStop(0.3, color.replace(')', ',0.3)').replace('rgb', 'rgba'));
-                sg.addColorStop(0.5, color);
-                sg.addColorStop(0.7, color.replace(')', ',0.3)').replace('rgb', 'rgba'));
-                sg.addColorStop(1, 'rgba(0,0,0,0)');
-
-                ctx.translate(x, y); ctx.rotate(axRad);
-                ctx.fillStyle = sg;
-                ctx.fillRect(-len, -thick, len * 2, thick * 2);
-                ctx.setTransform(1, 0, 0, 1, 0, 0);
-            }
-            ctx.restore();
-        };
-
-        // Street lamp
-        drawLight(w * 0.25, h * 0.28, 'rgb(200,220,255)', 6, 0);
-        // Lamppost
-        ctx.save(); ctx.filter = `blur(${this.getBlurPx(0.02)}px)`;
-        ctx.fillStyle = '#333'; ctx.fillRect(w * 0.245, h * 0.3, 3, horizonY - h * 0.3 + 20);
-        ctx.restore();
-
-        // Oncoming headlights
-        drawLight(w * 0.44, horizonY + 15, 'rgb(255,250,200)', 4, 0.03);
-        drawLight(w * 0.48, horizonY + 15, 'rgb(255,250,200)', 4, 0.03);
-
-        // Tail lights (car ahead)
-        drawLight(w * 0.53, h * 0.72, 'rgb(255,40,40)', 5, 0.15);
-        drawLight(w * 0.63, h * 0.72, 'rgb(255,40,40)', 5, 0.15);
-
-        // Traffic light in distance
-        drawLight(w * 0.7, horizonY - 10, 'rgb(50,255,50)', 3, 0.01);
-
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.filter = 'none'; ctx.globalAlpha = 1;
-    },
-
+    // ──── UTILITIES ────
     roundRect(ctx, x, y, w, h, r) {
         ctx.beginPath();
         ctx.moveTo(x + r, y);
-        ctx.lineTo(x + w - r, y);
-        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-        ctx.lineTo(x + w, y + h - r);
-        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-        ctx.lineTo(x + r, y + h);
-        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-        ctx.lineTo(x, y + r);
-        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
         ctx.closePath();
     },
 
     animate() {
         requestAnimationFrame(() => this.animate());
         this.controls.update();
+        // Pulse focal point
+        const t = Date.now() * 0.003;
+        if (this.objects.focalPoint) {
+            this.objects.focalPoint.scale.setScalar(0.8 + 0.2 * Math.sin(t));
+            this.objects.focalLight.intensity = 0.3 + 0.2 * Math.sin(t);
+        }
         this.renderer.render(this.scene, this.camera);
     }
 };
